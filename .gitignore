@@ -8,6 +8,7 @@
 /.idea
 /.ipynb_checkpoints
 /.vector_cache
+/model
 res.zip
 requirements.pip
 note.ipynb
