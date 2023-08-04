@@ -1,8 +1,3 @@
-# from utils import data_download
-#
-# if __name__ =="__main__":
-#     data_download
-
 import time
 import os
 import numpy as np
@@ -140,21 +135,16 @@ def main():
     else:
         exit('unknown dataset')
 
-    ''' train DLG and iDLG and mDLG'''
+    ''' train DLG and iDLG '''
     for idx_net in range(num_exp):
         net = LeNet(channel=channel, hideen=hidden, num_classes=num_classes)
         net.apply(weights_init)
 
-        net_1 = LeNet(channel=channel, hideen=hidden, num_classes=num_classes)
-        net_1.apply(weights_init)
-
         print('running %d|%d experiment' % (idx_net, num_exp))
         net = net.to(device)
-        net_1 = net_1.to(device)
-
         idx_shuffle = np.random.permutation(len(dst))
 
-        for method in ['mDLG']: # 'DLG', 'iDLG',
+        for method in ['DLG', 'iDLG']:
             print('%s, Try to generate %d images' % (method, num_dummy))
 
             criterion = nn.CrossEntropyLoss().to(device)
@@ -176,14 +166,9 @@ def main():
 
             # compute original gradient
             out = net(gt_data)
-            out_1 = net_1(gt_data)
             y = criterion(out, gt_label)
-            y_1 = criterion(out_1, gt_label)
             dy_dx = torch.autograd.grad(y, net.parameters())
-            dy_dx_1 = torch.autograd.grad(y_1, net_1.parameters())
             original_dy_dx = list((_.detach().clone() for _ in dy_dx))
-            original_dy_dx_1 = list((_.detach().clone() for _ in dy_dx_1))
-
 
             # generate dummy data and label
             dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
@@ -196,14 +181,6 @@ def main():
                 # predict the ground-truth label
                 label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1), dim=-1).detach().reshape(
                     (1,)).requires_grad_(False)
-            elif method =="mDLG":
-                optimizer = torch.optim.LBFGS([dummy_data, ], lr=lr)
-                # predict the ground-truth label
-                label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape(
-                    (1,)).requires_grad_(False)
-                label_pred_1 = torch.argmin(torch.sum(original_dy_dx_1[-2], dim=-1), dim=-1).detach().reshape(
-                    (1,)).requires_grad_(False)
-
 
             history = []
             history_iters = []
@@ -217,26 +194,18 @@ def main():
                 def closure():
                     optimizer.zero_grad()
                     pred = net(dummy_data)
-                    pred_1 = net_1(dummy_data)
                     if method == 'DLG':
                         dummy_loss = - torch.mean(
                             torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
                         # dummy_loss = criterion(pred, gt_label)
                     elif method == 'iDLG':
                         dummy_loss = criterion(pred, label_pred)
-                    elif method =="mDLG":
-                        dummy_loss = criterion(pred, label_pred)
-                        dummy_loss_1 = criterion(pred_1, label_pred_1)
 
                     dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
-                    dummy_dy_dx_1 = torch.autograd.grad(dummy_loss_1, net_1.parameters(), create_graph=True)
-
 
                     grad_diff = 0
                     for gx, gy in zip(dummy_dy_dx, original_dy_dx):
                         grad_diff += ((gx - gy) ** 2).sum()
-                    for gx_1, gy_1 in zip(dummy_dy_dx_1, original_dy_dx_1):
-                        grad_diff += ((gx_1 - gy_1) ** 2).sum()
                     grad_diff.backward()
                     return grad_diff
 
@@ -267,9 +236,6 @@ def main():
                         elif method == 'iDLG':
                             plt.savefig('%s/iDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                             plt.close()
-                        elif method == 'mDLG':
-                            plt.savefig('%s/mDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
-                            plt.close()
 
                     if current_loss < 0.000001:  # converge
                         break
@@ -282,15 +248,11 @@ def main():
                 loss_iDLG = losses
                 label_iDLG = label_pred.item()
                 mse_iDLG = mses
-            elif method == 'mDLG':
-                loss_mDLG = losses
-                label_mDLG = label_pred.item()
-                mse_mDLG = mses
 
         print('imidx_list:', imidx_list)
-        print('loss_mDLG:', loss_mDLG[-1],) # 'loss_DLG:', loss_DLG[-1], 'loss_iDLG:', loss_iDLG[-1],
-        print('mse_mDLG:', mse_mDLG[-1]) # 'mse_DLG:', mse_DLG[-1], 'mse_iDLG:', mse_iDLG[-1],
-        # print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG, 'lab_iDLG:', label_iDLG, 'lab_mDLG:', label_mDLG)
+        print('loss_DLG:', loss_DLG[-1], 'loss_iDLG:', loss_iDLG[-1])
+        print('mse_DLG:', mse_DLG[-1], 'mse_iDLG:', mse_iDLG[-1])
+        print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG, 'lab_iDLG:', label_iDLG)
 
         print('----------------------\n\n')
 

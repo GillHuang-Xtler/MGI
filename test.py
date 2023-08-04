@@ -146,6 +146,8 @@ def train_model(net_0_full_save_path, net_1_full_save_path):
                     # if i % 1 == 0:    # print every 2000 mini-batches
                     print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.5f}')
                     running_loss = 0.0
+                    dy_dx = torch.autograd.grad(loss, net.parameters())
+                    original_dy_dx = list((_.detach().clone() for _ in dy_dx))
         net_full_save_path = os.path.join(args.get_default_model_folder_path(), str(model_id) + "_trained_Cifar10FC.model")
         torch.save(net.state_dict(),net_full_save_path)
         model_id += 1
