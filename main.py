@@ -3,6 +3,8 @@
 # if __name__ =="__main__":
 #     data_download
 
+from loguru import logger
+import arguments
 import time
 import os
 import numpy as np
@@ -85,18 +87,17 @@ def lfw_dataset(lfw_path, shape_img):
     dst = Dataset_from_Image(images_all, np.asarray(labels_all, dtype=int), transform=transform)
     return dst
 
+def load_data(args):
+    args = arguments.Arguments(logger)
 
-def main():
-    dataset = 'cifar100'
-    root_path = '.'
+    dataset = args.get_dataset()
+    root_path = args.get_root_path()
     data_path = os.path.join(root_path, 'data').replace('\\', '/')
-    save_path = os.path.join(root_path, 'res/iDLG_%s' % dataset).replace('\\', '/')
-
-
-    lr = 1.0
-    num_dummy = 1 # generate 1 image
-    Iteration = 300
-    num_exp = 5
+    save_path = os.path.join(root_path, 'res/compare_%s' % dataset).replace('\\', '/')
+    lr = args.get_lr()
+    num_dummy = args.get_num_dummy()
+    Iteration = args.get_iteration()
+    num_exp = args.get_num_exp()
 
     use_cuda = torch.cuda.is_available()
     device = 'cuda' if use_cuda else 'cpu'
@@ -104,9 +105,9 @@ def main():
     tt = transforms.Compose([transforms.ToTensor()])
     tp = transforms.Compose([transforms.ToPILImage()])
 
-    print(dataset, 'root_path:', root_path)
-    print(dataset, 'data_path:', data_path)
-    print(dataset, 'save_path:', save_path)
+    args.logger.info(dataset, 'root_path:', root_path)
+    args.logger.info(dataset, 'data_path:', data_path)
+    args.logger.info(dataset, 'save_path:', save_path)
 
     if not os.path.exists('res'):
         os.mkdir('res')
@@ -140,6 +141,12 @@ def main():
     else:
         exit('unknown dataset')
 
+    return lr, num_dummy, Iteration, num_exp, device, tt, tp, num_classes, channel, hidden, dst, save_path
+
+def main():
+    args = arguments.Arguments(logger)
+    lr, num_dummy, Iteration, num_exp, device, tt, tp, num_classes, channel, hidden, dst, save_path= load_data(args)
+
     ''' train DLG and iDLG and mDLG'''
     for idx_net in range(num_exp):
         net = LeNet(channel=channel, hideen=hidden, num_classes=num_classes)
@@ -154,7 +161,7 @@ def main():
 
         idx_shuffle = np.random.permutation(len(dst))
 
-        for method in ['mDLG']: # 'DLG', 'iDLG',
+        for method in ['DLG', 'iDLG', 'mDLG']: #
             print('%s, Try to generate %d images' % (method, num_dummy))
 
             criterion = nn.CrossEntropyLoss().to(device)
@@ -174,16 +181,24 @@ def main():
                     gt_data = torch.cat((gt_data, tmp_datum), dim=0)
                     gt_label = torch.cat((gt_label, tmp_label), dim=0)
 
-            # compute original gradient
-            out = net(gt_data)
-            out_1 = net_1(gt_data)
-            y = criterion(out, gt_label)
-            y_1 = criterion(out_1, gt_label)
-            dy_dx = torch.autograd.grad(y, net.parameters())
-            dy_dx_1 = torch.autograd.grad(y_1, net_1.parameters())
-            original_dy_dx = list((_.detach().clone() for _ in dy_dx))
-            original_dy_dx_1 = list((_.detach().clone() for _ in dy_dx_1))
+            if method == 'mDLG':
 
+                # compute original gradient
+                out = net(gt_data)
+                out_1 = net_1(gt_data)
+                y = criterion(out, gt_label)
+                y_1 = criterion(out_1, gt_label)
+                dy_dx = torch.autograd.grad(y, net.parameters())
+                dy_dx_1 = torch.autograd.grad(y_1, net_1.parameters())
+                original_dy_dx = list((_.detach().clone() for _ in dy_dx))
+                original_dy_dx_1 = list((_.detach().clone() for _ in dy_dx_1))
+
+            elif method == "DLG" or method == "iDLG":
+                # compute original gradient
+                out = net(gt_data)
+                y = criterion(out, gt_label)
+                dy_dx = torch.autograd.grad(y, net.parameters())
+                original_dy_dx = list((_.detach().clone() for _ in dy_dx))
 
             # generate dummy data and label
             dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
@@ -224,20 +239,27 @@ def main():
                         # dummy_loss = criterion(pred, gt_label)
                     elif method == 'iDLG':
                         dummy_loss = criterion(pred, label_pred)
-                    elif method =="mDLG":
+                    elif method == "mDLG":
                         dummy_loss = criterion(pred, label_pred)
                         dummy_loss_1 = criterion(pred_1, label_pred_1)
 
                     dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
-                    dummy_dy_dx_1 = torch.autograd.grad(dummy_loss_1, net_1.parameters(), create_graph=True)
 
+                    if method == "mDLG":
+                        dummy_dy_dx_1 = torch.autograd.grad(dummy_loss_1, net_1.parameters(), create_graph=True)
 
                     grad_diff = 0
-                    for gx, gy in zip(dummy_dy_dx, original_dy_dx):
-                        grad_diff += ((gx - gy) ** 2).sum()
-                    for gx_1, gy_1 in zip(dummy_dy_dx_1, original_dy_dx_1):
-                        grad_diff += ((gx_1 - gy_1) ** 2).sum()
-                    grad_diff.backward()
+
+                    if method =='iDLG' or method == "DLG":
+                        for gx, gy in zip(dummy_dy_dx, original_dy_dx):
+                            grad_diff += ((gx - gy) ** 2).sum()
+                        grad_diff.backward()
+                    elif method == "mDLG":
+                        for gx, gy in zip(dummy_dy_dx, original_dy_dx):
+                            grad_diff += ((gx - gy) ** 2).sum()
+                        for gx_1, gy_1 in zip(dummy_dy_dx_1, original_dy_dx_1):
+                            grad_diff += ((gx_1 - gy_1) ** 2).sum()
+                        grad_diff.backward()
                     return grad_diff
 
                 optimizer.step(closure)
@@ -288,12 +310,11 @@ def main():
                 mse_mDLG = mses
 
         print('imidx_list:', imidx_list)
-        print('loss_mDLG:', loss_mDLG[-1],) # 'loss_DLG:', loss_DLG[-1], 'loss_iDLG:', loss_iDLG[-1],
-        print('mse_mDLG:', mse_mDLG[-1]) # 'mse_DLG:', mse_DLG[-1], 'mse_iDLG:', mse_iDLG[-1],
-        # print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG, 'lab_iDLG:', label_iDLG, 'lab_mDLG:', label_mDLG)
+        print('loss_DLG:', loss_DLG[-1], 'loss_iDLG:', loss_iDLG[-1], 'loss_mDLG:', loss_mDLG[-1],) #
+        print('mse_DLG:', mse_DLG[-1], 'mse_iDLG:', mse_iDLG[-1], 'mse_mDLG:', mse_mDLG[-1]) #
+        print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG, 'lab_iDLG:', label_iDLG, 'lab_mDLG:', label_mDLG)
 
         print('----------------------\n\n')
-
 
 if __name__ == '__main__':
     main()

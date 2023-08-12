@@ -11,12 +11,14 @@ class Arguments:
 
     def __init__(self, logger):
         self.logger = logger
-        self.dataset = ['Cifar10']
+        self.dataset = 'cifar100'
         self.batch_size = 1
         self.model_path = './model'
-
-
-
+        self.root_path = '.'
+        self.lr = 1.0
+        self.num_dummy = 1 # the number of reconstructed images
+        self.iteration = 300
+        self.num_exp = 1
 
 
         self.train_data_loader_pickle_path = "data_loaders/cifar10/train_data_loader.pickle"
@@ -26,13 +28,31 @@ class Arguments:
     def get_logger(self):
         return self.logger
 
+    def get_dataset(self):
+        return self.dataset
+
     def get_train_data_loader_pickle_path(self):
         return self.train_data_loader_pickle_path
+
+    def get_num_dummy(self):
+        return self.num_dummy
 
     def set_test_data_loader_pickle_path(self, path):
         self.test_data_loader_pickle_path = path
     def get_default_model_folder_path(self):
         return self.model_path
+
+    def get_root_path(self):
+        return self.root_path
+
+    def get_lr(self):
+        return self.lr
+
+    def get_iteration(self):
+        return self.iteration
+
+    def get_num_exp(self):
+        return self.num_exp
 
     def log(self):
         """
