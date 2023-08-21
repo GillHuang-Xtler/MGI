@@ -172,3 +172,4 @@ dummy_image = np.array(dummy_image.astype(np.uint8))
 dummy_image = np.transpose(dummy_image, (2, 0, 1))
 plt.imshow(np.transpose(dummy_image, (1, 2, 0)))
 plt.show()
+##end
