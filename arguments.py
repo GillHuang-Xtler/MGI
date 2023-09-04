@@ -16,8 +16,8 @@ class Arguments:
         self.model_path = './model'
         self.root_path = '.'
         self.lr = 1.0
-        self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 300
+        self.num_dummy = 2 # the number of reconstructed images
+        self.iteration = 10
         self.num_exp = 1
 
 

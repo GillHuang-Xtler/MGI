@@ -85,12 +85,12 @@ def main():
     dataset = 'cifar100'
     root_path = '.'
     data_path = os.path.join(root_path, 'data').replace('\\', '/')
-    save_path = os.path.join(root_path, 'res/iDLG_%s' % dataset).replace('\\', '/')
+    save_path = os.path.join(root_path, 'baseline/iDLG_%s' % dataset).replace('\\', '/')
 
 
     lr = 1.0
-    num_dummy = 1 # generate 1 image
-    Iteration = 300
+    num_dummy = 2 # generate 1 image
+    Iteration = 800
     num_exp = 5
 
     use_cuda = torch.cuda.is_available()
@@ -144,7 +144,7 @@ def main():
         net = net.to(device)
         idx_shuffle = np.random.permutation(len(dst))
 
-        for method in ['DLG', 'iDLG']:
+        for method in ['DLG']:
             print('%s, Try to generate %d images' % (method, num_dummy))
 
             criterion = nn.CrossEntropyLoss().to(device)
@@ -168,6 +168,7 @@ def main():
             out = net(gt_data)
             y = criterion(out, gt_label)
             dy_dx = torch.autograd.grad(y, net.parameters())
+            print()
             original_dy_dx = list((_.detach().clone() for _ in dy_dx))
 
             # generate dummy data and label
@@ -195,9 +196,9 @@ def main():
                     optimizer.zero_grad()
                     pred = net(dummy_data)
                     if method == 'DLG':
-                        dummy_loss = - torch.mean(
-                            torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
-                        # dummy_loss = criterion(pred, gt_label)
+                        # dummy_loss = - torch.mean(
+                            # torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
+                        dummy_loss = criterion(pred, gt_label)
                     elif method == 'iDLG':
                         dummy_loss = criterion(pred, label_pred)
 
@@ -242,7 +243,8 @@ def main():
 
             if method == 'DLG':
                 loss_DLG = losses
-                label_DLG = torch.argmax(dummy_label, dim=-1).detach().item()
+                # label_DLG = torch.argmax(dummy_label, dim=-1).detach().item()
+                label_DLG = torch.argmax(dummy_label, dim=-1).numpy()
                 mse_DLG = mses
             elif method == 'iDLG':
                 loss_iDLG = losses
@@ -250,9 +252,9 @@ def main():
                 mse_iDLG = mses
 
         print('imidx_list:', imidx_list)
-        print('loss_DLG:', loss_DLG[-1], 'loss_iDLG:', loss_iDLG[-1])
-        print('mse_DLG:', mse_DLG[-1], 'mse_iDLG:', mse_iDLG[-1])
-        print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG, 'lab_iDLG:', label_iDLG)
+        print('loss_DLG:', loss_DLG[-1]) #, 'loss_iDLG:', loss_iDLG[-1])
+        print('mse_DLG:', mse_DLG[-1]) #, 'mse_iDLG:', mse_iDLG[-1])
+        print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG) #, 'lab_iDLG:', label_iDLG)
 
         print('----------------------\n\n')
 
