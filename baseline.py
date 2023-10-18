@@ -89,7 +89,7 @@ def main():
 
 
     lr = 1.0
-    num_dummy = 2 # generate 1 image
+    num_dummy = 2 # generate 2 image
     Iteration = 800
     num_exp = 5
 
@@ -252,9 +252,9 @@ def main():
                 mse_iDLG = mses
 
         print('imidx_list:', imidx_list)
-        print('loss_DLG:', loss_DLG[-1]) #, 'loss_iDLG:', loss_iDLG[-1])
-        print('mse_DLG:', mse_DLG[-1]) #, 'mse_iDLG:', mse_iDLG[-1])
-        print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG) #, 'lab_iDLG:', label_iDLG)
+        print('loss_DLG:', loss_DLG[-1],'loss_iDLG:', loss_iDLG[-1])
+        print('mse_DLG:', mse_DLG[-1] , 'mse_iDLG:', mse_iDLG[-1])
+        print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG, 'lab_iDLG:', label_iDLG)
 
         print('----------------------\n\n')
 

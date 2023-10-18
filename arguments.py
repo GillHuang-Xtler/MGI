@@ -15,14 +15,15 @@ class Arguments:
         self.batch_size = 1
         self.model_path = './model'
         self.root_path = '.'
-        self.lr = 1.0
-        self.num_dummy = 2 # the number of reconstructed images
-        self.iteration = 10
+        self.lr = 1
+        self.num_dummy = 1 # the number of reconstructed images
+        self.iteration = 300
         self.num_exp = 1
+        # self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG']
+        self.methods = ['DLGAdam']
 
-
-        self.train_data_loader_pickle_path = "data_loaders/cifar10/train_data_loader.pickle"
-        self.test_data_loader_pickle_path = "data_loaders/cifar10/test_data_loader.pickle"
+        self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
+        self.test_data_loader_pickle_path = "data_loaders/cifar100/test_data_loader.pickle"
 
 
     def get_logger(self):
@@ -53,6 +54,9 @@ class Arguments:
 
     def get_num_exp(self):
         return self.num_exp
+
+    def get_methods(self):
+        return self.methods
 
     def log(self):
         """

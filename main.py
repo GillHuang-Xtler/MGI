@@ -4,6 +4,7 @@
 #     data_download
 
 from loguru import logger
+import logging
 import arguments
 import time
 import os
@@ -15,7 +16,7 @@ from torch.utils.data import Dataset
 from torchvision import datasets, transforms
 import pickle
 import PIL.Image as Image
-
+# logging.getLogger().setLevel(Logging.INFO)
 
 class LeNet(nn.Module):
     def __init__(self, channel=3, hideen=768, num_classes=10):
@@ -87,27 +88,13 @@ def lfw_dataset(lfw_path, shape_img):
     dst = Dataset_from_Image(images_all, np.asarray(labels_all, dtype=int), transform=transform)
     return dst
 
-def load_data(args):
-    args = arguments.Arguments(logger)
+def load_data(dataset, root_path, data_path, save_path):
 
-    dataset = args.get_dataset()
-    root_path = args.get_root_path()
-    data_path = os.path.join(root_path, 'data').replace('\\', '/')
-    save_path = os.path.join(root_path, 'results/compare_%s' % dataset).replace('\\', '/')
-    lr = args.get_lr()
-    num_dummy = args.get_num_dummy()
-    Iteration = args.get_iteration()
-    num_exp = args.get_num_exp()
-
-    use_cuda = torch.cuda.is_available()
-    device = 'cuda' if use_cuda else 'cpu'
 
     tt = transforms.Compose([transforms.ToTensor()])
     tp = transforms.Compose([transforms.ToPILImage()])
 
-    args.logger.info(dataset, 'root_path:', root_path)
-    args.logger.info(dataset, 'data_path:', data_path)
-    args.logger.info(dataset, 'save_path:', save_path)
+
 
     if not os.path.exists('res'):
         os.mkdir('res')
@@ -141,13 +128,30 @@ def load_data(args):
     else:
         exit('unknown dataset')
 
-    return lr, num_dummy, Iteration, num_exp, device, tt, tp, num_classes, channel, hidden, dst, save_path
+    return tt, tp, num_classes, channel, hidden, dst
 
 def main():
     args = arguments.Arguments(logger)
-    lr, num_dummy, Iteration, num_exp, device, tt, tp, num_classes, channel, hidden, dst, save_path= load_data(args)
 
-    ''' train DLG and iDLG and mDLG'''
+    dataset = args.get_dataset()
+    root_path = args.get_root_path()
+    data_path = os.path.join(root_path, 'data').replace('\\', '/')
+    save_path = os.path.join(root_path, 'results/compare_%s' % dataset).replace('\\', '/')
+    lr = args.get_lr()
+    num_dummy = args.get_num_dummy()
+    Iteration = args.get_iteration()
+    num_exp = args.get_num_exp()
+    methods = args.get_methods()
+    use_cuda = torch.cuda.is_available()
+    device = 'cuda' if use_cuda else 'cpu'
+
+    args.logger.info(dataset, 'root_path:', root_path)
+    args.logger.info(dataset, 'data_path:', data_path)
+    args.logger.info(dataset, 'save_path:', save_path)
+
+    tt, tp, num_classes, channel, hidden, dst = load_data(dataset = dataset, root_path = root_path, data_path = data_path, save_path = save_path)
+
+    ''' train DLG and iDLG and mDLG and DLGAdam'''
     for idx_net in range(num_exp):
         net = LeNet(channel=channel, hideen=hidden, num_classes=num_classes)
         net.apply(weights_init)
@@ -161,7 +165,7 @@ def main():
 
         idx_shuffle = np.random.permutation(len(dst))
 
-        for method in ['DLG', 'iDLG', 'mDLG']: #
+        for method in methods: #
             print('%s, Try to generate %d images' % (method, num_dummy))
 
             criterion = nn.CrossEntropyLoss().to(device)
@@ -193,12 +197,15 @@ def main():
                 original_dy_dx = list((_.detach().clone() for _ in dy_dx))
                 original_dy_dx_1 = list((_.detach().clone() for _ in dy_dx_1))
 
-            elif method == "DLG" or method == "iDLG":
+            elif method == "DLG" or method == "iDLG" or method == 'DLGAdam' or method == 'InvG' :
                 # compute original gradient
                 out = net(gt_data)
                 y = criterion(out, gt_label)
                 dy_dx = torch.autograd.grad(y, net.parameters())
                 original_dy_dx = list((_.detach().clone() for _ in dy_dx))
+            else:
+                print("unknown methods")
+                continue
 
             # generate dummy data and label
             dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
@@ -206,6 +213,10 @@ def main():
 
             if method == 'DLG':
                 optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=lr)
+            elif method == 'DLGAdam':
+                optimizer = torch.optim.Adam([dummy_data, dummy_label], lr=0.1)
+            elif method == 'InvG':
+                optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=0.1)
             elif method == 'iDLG':
                 optimizer = torch.optim.LBFGS([dummy_data, ], lr=lr)
                 # predict the ground-truth label
@@ -218,7 +229,8 @@ def main():
                     (1,)).requires_grad_(False)
                 label_pred_1 = torch.argmin(torch.sum(original_dy_dx_1[-2], dim=-1), dim=-1).detach().reshape(
                     (1,)).requires_grad_(False)
-
+            else:
+                continue
 
             history = []
             history_iters = []
@@ -236,7 +248,12 @@ def main():
                     if method == 'DLG':
                         dummy_loss = - torch.mean(
                             torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
-                        # dummy_loss = criterion(pred, gt_label)
+                    if method == 'InvG':
+                        dummy_loss = - torch.mean(
+                            torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
+                    if method == 'DLGAdam':
+                        dummy_loss = - torch.mean(
+                            torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
                     elif method == 'iDLG':
                         dummy_loss = criterion(pred, label_pred)
                     elif method == "mDLG":
@@ -250,9 +267,14 @@ def main():
 
                     grad_diff = 0
 
-                    if method =='iDLG' or method == "DLG":
+                    if method =='iDLG' or method == "DLG" or method == 'DLGAdam':
                         for gx, gy in zip(dummy_dy_dx, original_dy_dx):
                             grad_diff += ((gx - gy) ** 2).sum()
+                        grad_diff.backward()
+                    elif method == 'InvG':
+                        for gx, gy in zip(dummy_dy_dx, original_dy_dx):
+                            cos = nn.CosineSimilarity(dim = 0)
+                            grad_diff += (1-cos(gx, gy)).sum()
                         grad_diff.backward()
                     elif method == "mDLG":
                         for gx, gy in zip(dummy_dy_dx, original_dy_dx):
@@ -286,34 +308,58 @@ def main():
                         if method == 'DLG':
                             plt.savefig('%s/DLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                             plt.close()
+                        elif method == 'DLGAdam':
+                            plt.savefig('%s/DLGAdam_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                            plt.close()
+                        elif method == 'InvG':
+                            plt.savefig('%s/InvG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                            plt.close()
                         elif method == 'iDLG':
                             plt.savefig('%s/iDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                             plt.close()
                         elif method == 'mDLG':
                             plt.savefig('%s/mDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                             plt.close()
+                        else:
+                            continue
 
-                    if current_loss < 0.000001:  # converge
+                    if abs(current_loss) < 0.000001:  # converge
                         break
 
             if method == 'DLG':
-                loss_DLG = losses
-                label_DLG = torch.argmax(dummy_label, dim=-1).detach().item()
-                mse_DLG = mses
+                loss= losses
+                label = torch.argmax(dummy_label, dim=-1).detach().item()
+                mse = mses
+                print('loss_DLG:', loss[-1], 'mse_DLG:', mse[-1], 'lab_DLG:', label)  #
+            elif method == 'DLGAdam':
+                loss= losses
+                label = torch.argmax(dummy_label, dim=-1).detach().item()
+                mse = mses
+                print('loss_DLGAdam:', loss[-1], 'mse_DLGAdam:', mse[-1], 'lab_DLGAdam:', label)
+            elif method == 'InvG':
+                loss = losses
+                label = torch.argmax(dummy_label, dim=-1).detach().item()
+                mse = mses
+                print('loss_InvG:', loss[-1], 'mse_InvG:', mse[-1], 'lab_InvG:', label)
             elif method == 'iDLG':
-                loss_iDLG = losses
-                label_iDLG = label_pred.item()
-                mse_iDLG = mses
+                loss = losses
+                label = label_pred.item()
+                mse = mses
+                print('loss_iDLG:', loss[-1], 'mse_iDLG:', mse[-1], 'lab_iDLG:', label)  #
             elif method == 'mDLG':
-                loss_mDLG = losses
-                label_mDLG = label_pred.item()
-                mse_mDLG = mses
+                loss = losses
+                label = label_pred.item()
+                mse = mses
+                print('loss_mDLG:', loss[-1], 'mse_mDLG:', mse[-1], 'lab_mDLG:', label)  #
+
+            else:
+                continue
 
         print('imidx_list:', imidx_list)
-        print('loss_DLG:', loss_DLG[-1], 'loss_iDLG:', loss_iDLG[-1], 'loss_mDLG:', loss_mDLG[-1],) #
-        print('mse_DLG:', mse_DLG[-1], 'mse_iDLG:', mse_iDLG[-1], 'mse_mDLG:', mse_mDLG[-1]) #
-        print('gt_label:', gt_label.detach().cpu().data.numpy(), 'lab_DLG:', label_DLG, 'lab_iDLG:', label_iDLG, 'lab_mDLG:', label_mDLG)
+        print('gt_label:', gt_label.detach().cpu().data.numpy())
 
+        for method in methods:
+            print(method, "loss: ", str(loss[-1]), ' ', "mse: ", str(mse[-1]), ' ', "label: ", str(label))
         print('----------------------\n\n')
 
 if __name__ == '__main__':
