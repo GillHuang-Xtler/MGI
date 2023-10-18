@@ -16,6 +16,7 @@ from torch.utils.data import Dataset
 from torchvision import datasets, transforms
 import pickle
 import PIL.Image as Image
+from utils import files
 # logging.getLogger().setLevel(Logging.INFO)
 
 class LeNet(nn.Module):
@@ -133,6 +134,10 @@ def load_data(dataset, root_path, data_path, save_path):
 def main():
     args = arguments.Arguments(logger)
 
+    # Initialize logger
+    log_files = files.files(args.get_start_index_str(), args.get_num_exp())
+    handler = logger.add(log_files[0], enqueue=True)
+
     dataset = args.get_dataset()
     root_path = args.get_root_path()
     data_path = os.path.join(root_path, 'data').replace('\\', '/')
@@ -142,12 +147,14 @@ def main():
     Iteration = args.get_iteration()
     num_exp = args.get_num_exp()
     methods = args.get_methods()
+    log_interval = args.get_log_interval()
     use_cuda = torch.cuda.is_available()
     device = 'cuda' if use_cuda else 'cpu'
-
-    args.logger.info(dataset, 'root_path:', root_path)
-    args.logger.info(dataset, 'data_path:', data_path)
-    args.logger.info(dataset, 'save_path:', save_path)
+    args.log()
+    args.logger.info('dataset is #{}:', dataset)
+    args.logger.info('root path is #{}:', root_path)
+    args.logger.info('data_path is #{}:', data_path)
+    args.logger.info('save_path is #{}:', save_path)
 
     tt, tp, num_classes, channel, hidden, dst = load_data(dataset = dataset, root_path = root_path, data_path = data_path, save_path = save_path)
 
@@ -159,14 +166,14 @@ def main():
         net_1 = LeNet(channel=channel, hideen=hidden, num_classes=num_classes)
         net_1.apply(weights_init)
 
-        print('running %d|%d experiment' % (idx_net, num_exp))
+        args.logger.info('running #{}|#{} experiment', idx_net, num_exp)
         net = net.to(device)
         net_1 = net_1.to(device)
 
         idx_shuffle = np.random.permutation(len(dst))
 
         for method in methods: #
-            print('%s, Try to generate %d images' % (method, num_dummy))
+            args.logger.info('#{}, Try to generate #{} images', method, num_dummy)
 
             criterion = nn.CrossEntropyLoss().to(device)
             imidx_list = []
@@ -214,8 +221,10 @@ def main():
             if method == 'DLG':
                 optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=lr)
             elif method == 'DLGAdam':
+                lr = 0.1
                 optimizer = torch.optim.Adam([dummy_data, dummy_label], lr=0.1)
             elif method == 'InvG':
+                lr = 0.1
                 optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=0.1)
             elif method == 'iDLG':
                 optimizer = torch.optim.LBFGS([dummy_data, ], lr=lr)
@@ -238,7 +247,7 @@ def main():
             mses = []
             train_iters = []
 
-            print('lr =', lr)
+            args.logger.info('lr = #{}', lr)
             for iters in range(Iteration):
 
                 def closure():
@@ -290,9 +299,9 @@ def main():
                 losses.append(current_loss)
                 mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-                if iters % int(Iteration / 30) == 0:
+                if iters % int(Iteration / log_interval) == 0:
                     current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
-                    print(current_time, iters, 'loss = %.8f, mse = %.8f' % (current_loss, mses[-1]))
+                    args.logger.info( 'current time: #{}, current iter #{}, loss = #{}, mse = #{}', current_time, iters, current_loss, mses[-1])
                     history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
                     history_iters.append(iters)
 
@@ -330,37 +339,39 @@ def main():
                 loss= losses
                 label = torch.argmax(dummy_label, dim=-1).detach().item()
                 mse = mses
-                print('loss_DLG:', loss[-1], 'mse_DLG:', mse[-1], 'lab_DLG:', label)  #
+                args.logger.info('loss of DLG: #{}, mse of DLG: #{}, label of DLG: #{}', loss[-1], mse[-1],  label)  #
             elif method == 'DLGAdam':
                 loss= losses
                 label = torch.argmax(dummy_label, dim=-1).detach().item()
                 mse = mses
-                print('loss_DLGAdam:', loss[-1], 'mse_DLGAdam:', mse[-1], 'lab_DLGAdam:', label)
+                args.logger.info('loss of DLGAdam: #{}, mse of DLGAdam: #{}, label of DLGAdam: #{}', loss[-1], mse[-1],  label)  #
             elif method == 'InvG':
                 loss = losses
                 label = torch.argmax(dummy_label, dim=-1).detach().item()
                 mse = mses
-                print('loss_InvG:', loss[-1], 'mse_InvG:', mse[-1], 'lab_InvG:', label)
+                args.logger.info('loss of InvG: #{}, mse of InvG: #{}, label of InvG: #{}', loss[-1], mse[-1],  label)  #
             elif method == 'iDLG':
                 loss = losses
                 label = label_pred.item()
                 mse = mses
-                print('loss_iDLG:', loss[-1], 'mse_iDLG:', mse[-1], 'lab_iDLG:', label)  #
+                args.logger.info('loss of iDLG: #{}, mse of iDLG: #{}, label of iDLG: #{}', loss[-1], mse[-1],  label)  #
             elif method == 'mDLG':
                 loss = losses
                 label = label_pred.item()
                 mse = mses
-                print('loss_mDLG:', loss[-1], 'mse_mDLG:', mse[-1], 'lab_mDLG:', label)  #
+                args.logger.info('loss of mDLG: #{}, mse of mDLG: #{}, label of mDLG: #{}', loss[-1], mse[-1],  label)  #
 
             else:
                 continue
 
-        print('imidx_list:', imidx_list)
-        print('gt_label:', gt_label.detach().cpu().data.numpy())
+        args.logger.info('imidx_list: #{}', imidx_list)
+        # args.logger.info('gt_label: #{}', gt_label.detach().cpu().data.numpy())
+        #
+        # for method in methods:
+        #     args.logger.info('method: #{}, "loss: #{}, mse: #{}, label: #{}', method, str(loss[-1]), str(mse[-1]), str(label))
+        # print('----------------------\n\n')
+    logger.remove(handler)
 
-        for method in methods:
-            print(method, "loss: ", str(loss[-1]), ' ', "mse: ", str(mse[-1]), ' ', "label: ", str(label))
-        print('----------------------\n\n')
 
 if __name__ == '__main__':
     main()

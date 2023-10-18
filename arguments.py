@@ -19,8 +19,10 @@ class Arguments:
         self.num_dummy = 1 # the number of reconstructed images
         self.iteration = 300
         self.num_exp = 1
-        # self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG']
-        self.methods = ['DLGAdam']
+        # self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG', 'CPA']
+        self.methods = ['CPA']
+        self.start_index_str = '_'.join(self.methods)
+        self.log_interval = 30
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
         self.test_data_loader_pickle_path = "data_loaders/cifar100/test_data_loader.pickle"
@@ -58,6 +60,12 @@ class Arguments:
     def get_methods(self):
         return self.methods
 
+    def get_start_index_str(self):
+        return self.start_index_str
+
+    def get_log_interval(self):
+        return self.log_interval
+
     def log(self):
         """
         Log this arguments object to the logger.
@@ -66,28 +74,11 @@ class Arguments:
 
     def __str__(self):
         return "\nBatch Size: {}\n".format(self.batch_size) + \
-               "Test Batch Size: {}\n".format(self.test_batch_size) + \
-               "Epochs: {}\n".format(self.epochs) + \
+               "Iteration: {}\n".format(self.iteration) + \
                "Learning Rate: {}\n".format(self.lr) + \
-               "Momentum: {}\n".format(self.momentum) + \
-               "CUDA Enabled: {}\n".format(self.cuda) + \
-               "Shuffle Enabled: {}\n".format(self.shuffle) + \
-               "Log Interval: {}\n".format(self.log_interval) + \
-               "Scheduler Step Size: {}\n".format(self.scheduler_step_size) + \
-               "Scheduler Gamma: {}\n".format(self.scheduler_gamma) + \
-               "Scheduler Minimum Learning Rate: {}\n".format(self.min_lr) + \
-               "Client Selection Strategy: {}\n".format(self.round_worker_selection_strategy) + \
-               "Client Selection Strategy Arguments: {}\n".format(json.dumps(self.round_worker_selection_strategy_kwargs, indent=4, sort_keys=True)) + \
-               "Model Saving Enabled: {}\n".format(self.save_model) + \
-               "Model Saving Interval: {}\n".format(self.save_epoch_interval) + \
-               "Model Saving Path (Relative): {}\n".format(self.save_model_path) + \
-               "Epoch Save Start Prefix: {}\n".format(self.epoch_save_start_suffix) + \
-               "Epoch Save End Suffix: {}\n".format(self.epoch_save_end_suffix) + \
-               "Number of Clients: {}\n".format(self.num_workers) + \
-               "Number of Poisoned Clients: {}\n".format(self.num_poisoned_workers) + \
-               "NN: {}\n".format(self.net) + \
-               "Train Data Loader Path: {}\n".format(self.train_data_loader_pickle_path) + \
-               "Test Data Loader Path: {}\n".format(self.test_data_loader_pickle_path) + \
-               "Loss Function: {}\n".format(self.loss_function) + \
-               "Default Model Folder Path: {}\n".format(self.default_model_folder_path) + \
-               "Data Path: {}\n".format(self.data_path)
+               "Model Path (Relative): {}\n".format(self.model_path) + \
+               "Methods: {}\n".format(self.methods) + \
+               "Number Exp: {}\n".format(self.num_exp) + \
+               "Dataset: {}\n".format(self.dataset) + \
+               "Log Interval: {}\n".format(self.log_interval)
+
