@@ -17,12 +17,12 @@ class Arguments:
         self.root_path = '.'
         self.lr = 1
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 300
+        self.iteration = 5
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG', 'CPA']
         self.methods = ['CPA']
         self.start_index_str = '_'.join(self.methods)
-        self.log_interval = 30
+        self.log_interval = 1
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
         self.test_data_loader_pickle_path = "data_loaders/cifar100/test_data_loader.pickle"

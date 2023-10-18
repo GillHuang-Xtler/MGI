@@ -18,6 +18,9 @@ import pickle
 import PIL.Image as Image
 from utils import files
 # logging.getLogger().setLevel(Logging.INFO)
+# from lpips_pytorch import LPIPS, lpips
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+lpips = LearnedPerceptualImagePatchSimilarity(net_type='squeeze')
 
 class LeNet(nn.Module):
     def __init__(self, channel=3, hideen=768, num_classes=10):
@@ -204,7 +207,7 @@ def main():
                 original_dy_dx = list((_.detach().clone() for _ in dy_dx))
                 original_dy_dx_1 = list((_.detach().clone() for _ in dy_dx_1))
 
-            elif method == "DLG" or method == "iDLG" or method == 'DLGAdam' or method == 'InvG' :
+            elif method == "DLG" or method == "iDLG" or method == 'DLGAdam' or method == 'InvG' or method == 'CPA' :
                 # compute original gradient
                 out = net(gt_data)
                 y = criterion(out, gt_label)
@@ -220,17 +223,20 @@ def main():
 
             if method == 'DLG':
                 optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=lr)
+            elif method == 'iDLG':
+                optimizer = torch.optim.LBFGS([dummy_data, ], lr=lr)
+                # predict the ground-truth label
+                label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1), dim=-1).detach().reshape(
+                    (1,)).requires_grad_(False)
             elif method == 'DLGAdam':
                 lr = 0.1
                 optimizer = torch.optim.Adam([dummy_data, dummy_label], lr=0.1)
             elif method == 'InvG':
                 lr = 0.1
                 optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=0.1)
-            elif method == 'iDLG':
-                optimizer = torch.optim.LBFGS([dummy_data, ], lr=lr)
-                # predict the ground-truth label
-                label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1), dim=-1).detach().reshape(
-                    (1,)).requires_grad_(False)
+            elif method == 'CPA':
+                lr = 0.01
+                optimizer = torch.optim.Adam([dummy_data, dummy_label], lr = 0.01)
             elif method =="mDLG":
                 optimizer = torch.optim.LBFGS([dummy_data, ], lr=lr)
                 # predict the ground-truth label
@@ -257,14 +263,17 @@ def main():
                     if method == 'DLG':
                         dummy_loss = - torch.mean(
                             torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
-                    if method == 'InvG':
-                        dummy_loss = - torch.mean(
-                            torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
-                    if method == 'DLGAdam':
-                        dummy_loss = - torch.mean(
-                            torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
                     elif method == 'iDLG':
                         dummy_loss = criterion(pred, label_pred)
+                    elif method == 'InvG':
+                        dummy_loss = - torch.mean(
+                            torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
+                    elif method == 'DLGAdam':
+                        dummy_loss = - torch.mean(
+                            torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
+                    elif method == 'CPA':
+                        dummy_loss = - torch.mean(
+                            torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
                     elif method == "mDLG":
                         dummy_loss = criterion(pred, label_pred)
                         dummy_loss_1 = criterion(pred_1, label_pred_1)
@@ -276,7 +285,7 @@ def main():
 
                     grad_diff = 0
 
-                    if method =='iDLG' or method == "DLG" or method == 'DLGAdam':
+                    if method =='iDLG' or method == "DLG" or method == 'DLGAdam' :
                         for gx, gy in zip(dummy_dy_dx, original_dy_dx):
                             grad_diff += ((gx - gy) ** 2).sum()
                         grad_diff.backward()
@@ -285,6 +294,9 @@ def main():
                             cos = nn.CosineSimilarity(dim = 0)
                             grad_diff += (1-cos(gx, gy)).sum()
                         grad_diff.backward()
+                    elif method == 'CPA':
+                        for gx, gy in zip(dummy_dy_dx, original_dy_dx):
+                            grad_diff += (lpips(gx, gy)).sum()
                     elif method == "mDLG":
                         for gx, gy in zip(dummy_dy_dx, original_dy_dx):
                             grad_diff += ((gx - gy) ** 2).sum()
@@ -317,14 +329,17 @@ def main():
                         if method == 'DLG':
                             plt.savefig('%s/DLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                             plt.close()
+                        elif method == 'iDLG':
+                            plt.savefig('%s/iDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                            plt.close()
                         elif method == 'DLGAdam':
                             plt.savefig('%s/DLGAdam_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                             plt.close()
                         elif method == 'InvG':
                             plt.savefig('%s/InvG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                             plt.close()
-                        elif method == 'iDLG':
-                            plt.savefig('%s/iDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                        elif method == 'CPA':
+                            plt.savefig('%s/CPA_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                             plt.close()
                         elif method == 'mDLG':
                             plt.savefig('%s/mDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
@@ -340,6 +355,11 @@ def main():
                 label = torch.argmax(dummy_label, dim=-1).detach().item()
                 mse = mses
                 args.logger.info('loss of DLG: #{}, mse of DLG: #{}, label of DLG: #{}', loss[-1], mse[-1],  label)  #
+            elif method == 'iDLG':
+                loss = losses
+                label = label_pred.item()
+                mse = mses
+                args.logger.info('loss of iDLG: #{}, mse of iDLG: #{}, label of iDLG: #{}', loss[-1], mse[-1],  label)  #
             elif method == 'DLGAdam':
                 loss= losses
                 label = torch.argmax(dummy_label, dim=-1).detach().item()
@@ -350,11 +370,11 @@ def main():
                 label = torch.argmax(dummy_label, dim=-1).detach().item()
                 mse = mses
                 args.logger.info('loss of InvG: #{}, mse of InvG: #{}, label of InvG: #{}', loss[-1], mse[-1],  label)  #
-            elif method == 'iDLG':
+            elif method == 'CPA':
                 loss = losses
                 label = label_pred.item()
                 mse = mses
-                args.logger.info('loss of iDLG: #{}, mse of iDLG: #{}, label of iDLG: #{}', loss[-1], mse[-1],  label)  #
+                args.logger.info('loss of CPA: #{}, mse of CPA: #{}, label of CPA: #{}', loss[-1], mse[-1],  label)  #
             elif method == 'mDLG':
                 loss = losses
                 label = label_pred.item()
