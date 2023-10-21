@@ -12,7 +12,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
 from torchvision import datasets, transforms
 import pickle
 import PIL.Image as Image
@@ -21,118 +20,10 @@ from utils import files
 # from lpips_pytorch import LPIPS, lpips
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 lpips = LearnedPerceptualImagePatchSimilarity(net_type='squeeze')
+from utils.net import LeNet, FC2
+from utils.data_processing import weights_init
+from utils.data_download import load_data
 
-class LeNet(nn.Module):
-    def __init__(self, channel=3, hideen=768, num_classes=10):
-        super(LeNet, self).__init__()
-        act = nn.Sigmoid
-        self.body = nn.Sequential(
-            nn.Conv2d(channel, 12, kernel_size=5, padding=5 // 2, stride=2),
-            act(),
-            nn.Conv2d(12, 12, kernel_size=5, padding=5 // 2, stride=2),
-            act(),
-            nn.Conv2d(12, 12, kernel_size=5, padding=5 // 2, stride=1),
-            act(),
-        )
-        self.fc = nn.Sequential(
-            nn.Linear(hideen, num_classes)
-        )
-
-    def forward(self, x):
-        out = self.body(x)
-        out = out.view(out.size(0), -1)
-        out = self.fc(out)
-        return out
-
-
-def weights_init(m):
-    try:
-        if hasattr(m, "weight"):
-            m.weight.data.uniform_(-0.5, 0.5)
-    except Exception:
-        print('warning: failed in weights_init for %s.weight' % m._get_name())
-    try:
-        if hasattr(m, "bias"):
-            m.bias.data.uniform_(-0.5, 0.5)
-    except Exception:
-        print('warning: failed in weights_init for %s.bias' % m._get_name())
-
-
-class Dataset_from_Image(Dataset):
-    def __init__(self, imgs, labs, transform=None):
-        self.imgs = imgs  # img paths
-        self.labs = labs  # labs is ndarray
-        self.transform = transform
-        del imgs, labs
-
-    def __len__(self):
-        return self.labs.shape[0]
-
-    def __getitem__(self, idx):
-        lab = self.labs[idx]
-        img = Image.open(self.imgs[idx])
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-        img = self.transform(img)
-        return img, lab
-
-
-def lfw_dataset(lfw_path, shape_img):
-    images_all = []
-    labels_all = []
-    folders = os.listdir(lfw_path)
-    for foldidx, fold in enumerate(folders):
-        files = os.listdir(os.path.join(lfw_path, fold))
-        for f in files:
-            if len(f) > 4 and f[-4:] == '.jpg':
-                images_all.append(os.path.join(lfw_path, fold, f))
-                labels_all.append(foldidx)
-
-    transform = transforms.Compose([transforms.Resize(size=shape_img)])
-    dst = Dataset_from_Image(images_all, np.asarray(labels_all, dtype=int), transform=transform)
-    return dst
-
-def load_data(dataset, root_path, data_path, save_path):
-
-
-    tt = transforms.Compose([transforms.ToTensor()])
-    tp = transforms.Compose([transforms.ToPILImage()])
-
-
-
-    if not os.path.exists('res'):
-        os.mkdir('res')
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
-
-    ''' load data '''
-    if dataset == 'MNIST':
-        shape_img = (28, 28)
-        num_classes = 10
-        channel = 1
-        hidden = 588
-        dst = datasets.MNIST(data_path, download=False)
-
-    elif dataset == 'cifar100':
-        shape_img = (32, 32)
-        num_classes = 100
-        channel = 3
-        hidden = 768
-        dst = datasets.CIFAR100(data_path, download=True)
-
-
-    elif dataset == 'lfw':
-        shape_img = (32, 32)
-        num_classes = 5749
-        channel = 3
-        hidden = 768
-        lfw_path = os.path.join(root_path, '../data/lfw')
-        dst = lfw_dataset(lfw_path, shape_img)
-
-    else:
-        exit('unknown dataset')
-
-    return tt, tp, num_classes, channel, hidden, dst
 
 def main():
     args = arguments.Arguments(logger)
@@ -144,7 +35,7 @@ def main():
     dataset = args.get_dataset()
     root_path = args.get_root_path()
     data_path = os.path.join(root_path, 'data').replace('\\', '/')
-    save_path = os.path.join(root_path, 'results/compare_%s' % dataset).replace('\\', '/')
+    save_path = os.path.join(root_path, 'debug_results/compare_%s' % dataset).replace('\\', '/')
     lr = args.get_lr()
     num_dummy = args.get_num_dummy()
     Iteration = args.get_iteration()
@@ -159,15 +50,22 @@ def main():
     args.logger.info('data_path is #{}:', data_path)
     args.logger.info('save_path is #{}:', save_path)
 
-    tt, tp, num_classes, channel, hidden, dst = load_data(dataset = dataset, root_path = root_path, data_path = data_path, save_path = save_path)
+    tt, tp, num_classes, channel, hidden, dst, input_size = load_data(dataset = dataset, root_path = root_path, data_path = data_path, save_path = save_path)
 
     ''' train DLG and iDLG and mDLG and DLGAdam'''
     for idx_net in range(num_exp):
-        net = LeNet(channel=channel, hideen=hidden, num_classes=num_classes)
-        net.apply(weights_init)
 
-        net_1 = LeNet(channel=channel, hideen=hidden, num_classes=num_classes)
-        net_1.apply(weights_init)
+        if args.get_net() == 'lenet':
+            print("here")
+            net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
+            net_1 = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
+            net.apply(weights_init)
+            net_1.apply(weights_init)
+        elif args.get_net() == 'fc2':
+            net = FC2(channel=channel, input_size= input_size, hidden =500, num_classes=num_classes)
+            net_1 = FC2(channel=channel, input_size= input_size, hidden=500, num_classes=num_classes)
+            # net.apply(weights_init)
+            # net_1.apply(weights_init)
 
         args.logger.info('running #{}|#{} experiment', idx_net, num_exp)
         net = net.to(device)
@@ -230,13 +128,13 @@ def main():
                     (1,)).requires_grad_(False)
             elif method == 'DLGAdam':
                 lr = 0.1
-                optimizer = torch.optim.Adam([dummy_data, dummy_label], lr=0.1)
+                optimizer = torch.optim.Adam([dummy_data, dummy_label], lr=lr)
             elif method == 'InvG':
                 lr = 0.1
-                optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=0.1)
+                optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=lr)
             elif method == 'CPA':
-                lr = 0.01
-                optimizer = torch.optim.Adam([dummy_data, dummy_label], lr = 0.01)
+                lr = 0.0001
+                optimizer = torch.optim.Adam([dummy_data, dummy_label], lr = lr)
             elif method =="mDLG":
                 optimizer = torch.optim.LBFGS([dummy_data, ], lr=lr)
                 # predict the ground-truth label
@@ -296,7 +194,8 @@ def main():
                         grad_diff.backward()
                     elif method == 'CPA':
                         for gx, gy in zip(dummy_dy_dx, original_dy_dx):
-                            grad_diff += (lpips(gx, gy)).sum()
+                            cos = nn.CosineSimilarity(dim = 0)
+                            grad_diff += (1-cos(gx, gy)).sum()
                     elif method == "mDLG":
                         for gx, gy in zip(dummy_dy_dx, original_dy_dx):
                             grad_diff += ((gx - gy) ** 2).sum()
@@ -372,7 +271,7 @@ def main():
                 args.logger.info('loss of InvG: #{}, mse of InvG: #{}, label of InvG: #{}', loss[-1], mse[-1],  label)  #
             elif method == 'CPA':
                 loss = losses
-                label = label_pred.item()
+                label = torch.argmax(dummy_label, dim=-1).detach().item()
                 mse = mses
                 args.logger.info('loss of CPA: #{}, mse of CPA: #{}, label of CPA: #{}', loss[-1], mse[-1],  label)  #
             elif method == 'mDLG':

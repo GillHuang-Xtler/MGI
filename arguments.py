@@ -12,17 +12,18 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
         self.dataset = 'cifar100'
+        self.net = 'lenet' # 'lenet', 'fc2'
         self.batch_size = 1
         self.model_path = './model'
         self.root_path = '.'
         self.lr = 1
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 5
+        self.iteration = 300
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG', 'CPA']
-        self.methods = ['CPA']
+        self.methods = ['DLG']
         self.start_index_str = '_'.join(self.methods)
-        self.log_interval = 1
+        self.log_interval = 30
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
         self.test_data_loader_pickle_path = "data_loaders/cifar100/test_data_loader.pickle"
@@ -65,6 +66,9 @@ class Arguments:
 
     def get_log_interval(self):
         return self.log_interval
+
+    def get_net(self):
+        return self.net
 
     def log(self):
         """
