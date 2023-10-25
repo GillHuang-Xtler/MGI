@@ -2,6 +2,7 @@
 import torch.nn.functional as F
 import torch
 import json
+import time
 
 # Setting the seed for Torch
 SEED = 1
@@ -11,7 +12,7 @@ class Arguments:
 
     def __init__(self, logger):
         self.logger = logger
-        self.dataset = 'cifar100'
+        self.dataset = 'lfw' # 'cifar100', 'lfw', 'mnist', 'celebA'
         self.net = 'lenet' # 'lenet', 'fc2'
         self.batch_size = 1
         self.model_path = './model'
@@ -20,9 +21,10 @@ class Arguments:
         self.num_dummy = 1 # the number of reconstructed images
         self.iteration = 300
         self.num_exp = 1
-        # self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG', 'CPA']
-        self.methods = ['DLG']
-        self.start_index_str = '_'.join(self.methods)
+        self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG', 'CPA']
+        # self.methods = ['CPA']
+        self.int_time = int(time.time())
+        # self.start_index_str = '_'.join(self.save_name_list)
         self.log_interval = 30
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"

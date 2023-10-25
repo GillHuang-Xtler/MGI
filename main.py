@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+# from ica import ica1
 from torchvision import datasets, transforms
 import pickle
 import PIL.Image as Image
@@ -19,7 +20,7 @@ from utils import files
 # logging.getLogger().setLevel(Logging.INFO)
 # from lpips_pytorch import LPIPS, lpips
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-lpips = LearnedPerceptualImagePatchSimilarity(net_type='squeeze')
+# lpips = LearnedPerceptualImagePatchSimilarity(net_type='squeeze')
 from utils.net import LeNet, FC2
 from utils.data_processing import weights_init
 from utils.data_download import load_data
@@ -29,13 +30,13 @@ def main():
     args = arguments.Arguments(logger)
 
     # Initialize logger
-    log_files = files.files(args.get_start_index_str(), args.get_num_exp())
+    log_files = files.files(args)
     handler = logger.add(log_files[0], enqueue=True)
 
     dataset = args.get_dataset()
     root_path = args.get_root_path()
     data_path = os.path.join(root_path, 'data').replace('\\', '/')
-    save_path = os.path.join(root_path, 'debug_results/compare_%s' % dataset).replace('\\', '/')
+    save_path = os.path.join(root_path, 'results/compare_%s' % dataset).replace('\\', '/')
     lr = args.get_lr()
     num_dummy = args.get_num_dummy()
     Iteration = args.get_iteration()
@@ -111,6 +112,11 @@ def main():
                 y = criterion(out, gt_label)
                 dy_dx = torch.autograd.grad(y, net.parameters())
                 original_dy_dx = list((_.detach().clone() for _ in dy_dx))
+                # print(original_dy_dx)
+                # print(np.shape(original_dy_dx))
+                # for i in original_dy_dx:
+                #     a, w, s = ica1(i, 3072)
+                #     print(a , w, s)
             else:
                 print("unknown methods")
                 continue

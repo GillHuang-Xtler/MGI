@@ -1,4 +1,4 @@
-def files(start_idx_str, num_exp):
+def files(args):
     """
     Generate the filenames for all experiment IDs.
 
@@ -8,13 +8,14 @@ def files(start_idx_str, num_exp):
     :type num_exp: int
     """
     log_files = []
-    results_files = []
-    models_folders = []
+    results_files = args.methods
+    results_files.extend([args.dataset, args.net])
+    file_name = '_'.join(results_files)
 
-    for i in range(num_exp):
-        idx_str = start_idx_str + '_' + str(i)
+    for i in range(args.get_num_exp()):
+        idx_str = file_name + '_' + str(i)
 
-        log_files.append("logs/" + idx_str + ".log")
+        log_files.append("logs/" + idx_str + "1024.log")
         # results_files.append(idx + "_results.csv")
         # models_folders.append(idx + "_models")
 

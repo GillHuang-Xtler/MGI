@@ -10,6 +10,7 @@ import pickle
 import PIL.Image as Image
 
 
+
 class LeNet(nn.Module):
     def __init__(self, channel=3, hideen=768, num_classes=10):
         super(LeNet, self).__init__()

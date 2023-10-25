@@ -6,6 +6,7 @@ import arguments
 import torchvision
 import os
 from torch.utils.data import Dataset
+import PIL.Image as Image
 
 
 def weights_init(m):
