@@ -76,7 +76,9 @@ def load_data(dataset, root_path, data_path, save_path):
     else:
         exit('unknown dataset')
 
-    return tt, tp, num_classes, channel, hidden, dst, input_size
+    idx_shuffle = np.random.permutation(len(dst))
+
+    return tt, tp, num_classes, channel, hidden, dst, input_size, idx_shuffle
 
 # def save_data_loader_to_file(data_loader, file_obj):
 #     pickle.dump(data_loader, file_obj)
