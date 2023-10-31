@@ -23,7 +23,7 @@ class Arguments:
         self.iteration = 100
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG', 'CPA']
-        self.methods = ['DLG']
+        self.methods = ['DLG', 'iDLG']
         self.int_time = int(time.time())
         # self.start_index_str = '_'.join(self.save_name_list)
         self.log_interval = 10

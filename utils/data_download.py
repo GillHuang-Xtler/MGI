@@ -54,14 +54,14 @@ def load_data(dataset, root_path, data_path, save_path):
         hidden = 768
         dst = datasets.CIFAR100(data_path, download=True)
 
-    elif dataset == 'celebA':
-        shape_img = (32, 32)
-        input_size = 32
-        num_classes = 100
-        channel = 3
-        hidden = 768
-        celebA_path = os.path.join(root_path, './data/celebA')
-        dst = celebA_dataset(celebA_path, shape_img)
+    # elif dataset == 'celebA':
+    #     shape_img = (32, 32)
+    #     input_size = 32
+    #     num_classes = 100
+    #     channel = 3
+    #     hidden = 768
+    #     celebA_path = os.path.join(root_path, './data/celebA')
+    #     dst = celebA_dataset(celebA_path, shape_img)
 
     elif dataset == 'lfw':
         shape_img = (32, 32)
