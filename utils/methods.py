@@ -81,7 +81,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/DLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                # plt.savefig('%s/DLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                 plt.close()
         elif iters == final_iter:
             print('this is final iter')
@@ -176,7 +176,7 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/iDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                # plt.savefig('%s/iDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
                 plt.close()
         elif iters == final_iter:
             print('this is final iter')

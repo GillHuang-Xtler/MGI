@@ -8,6 +8,8 @@ import logging
 import arguments
 import time
 import os
+from plot import plot
+from os import listdir
 import numpy as np
 from utils.methods import dlg, idlg, dlgadam, invg, mdlg, cpa
 import matplotlib.pyplot as plt
@@ -66,7 +68,7 @@ def main():
         imidx_lists = []
         final_iters = []
         final_imgs = []
-
+        #
         for method in methods: #
             args.logger.info('#{}, Try to generate #{} images', method, num_dummy)
             if method == 'DLG':
@@ -75,7 +77,7 @@ def main():
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
                 plt.imshow(final_img[0][0])
-                plt.title('iter=%d' % (final_iter))
+                plt.title('%s_on_iter=%d' % (method, final_iter))
                 plt.axis('off')
                 plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
@@ -85,7 +87,7 @@ def main():
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
                 plt.imshow(final_img[0][0])
-                plt.title('iter=%d' % (final_iter))
+                plt.title('%s_on_iter=%d' % (method, final_iter))
                 plt.axis('off')
                 plt.savefig('%s/iDLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
@@ -95,7 +97,7 @@ def main():
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
                 plt.imshow(final_img[0][0])
-                plt.title('iter=%d' % (final_iter))
+                plt.title('%s_on_iter=%d' % (method, final_iter))
                 plt.axis('off')
                 plt.savefig('%s/DLGAdam_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
@@ -105,7 +107,7 @@ def main():
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
                 plt.imshow(final_img[0][0])
-                plt.title('iter=%d' % (final_iter))
+                plt.title('%s_on_iter=%d' % (method, final_iter))
                 plt.axis('off')
                 plt.savefig('%s/InvG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
@@ -115,7 +117,7 @@ def main():
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
                 plt.imshow(final_img[0][0])
-                plt.title('iter=%d' % (final_iter))
+                plt.title('%s_on_iter=%d' % (method, final_iter))
                 plt.axis('off')
                 plt.savefig('%s/mDLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
@@ -125,18 +127,20 @@ def main():
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
                 plt.imshow(final_img[0][0])
-                plt.title('iter=%d' % (final_iter))
+                plt.title('%s_on_iter=%d' % (method, final_iter))
                 plt.axis('off')
                 plt.savefig('%s/CPA_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
 
-        print(final_imgs[0][0][0])
-        width, height = final_imgs[0][0][0].size
-        res = Image.new(final_imgs[0][0][0].mode, (width*len(final_imgs), height))
-        for i , im in enumerate(final_imgs[0][0]):
-            res.paste(im, box=(0, i*width))
-
-        res.save('%s/compare_all.png' % save_path)
+            # width, height = final_imgs[0][0][0].size
+            # res = Image.new(final_imgs[0][0][0].mode, (width , height * len(final_imgs)))
+            # for i, im in enumerate(final_imgs[0][0]):
+            #     plt.imshow(im)
+            #     res.paste(im, box=(0, i * height))
+            #
+            # res.save('compare_all_cifar100_test.png')
+            # result = plot.plot(mode = 'h', input_filenames=final_imgs)
+            # result.save('compare_all_cifar100_test.png')
 
             # plt.imshow(final_img[0][0])
             # plt.title('iter=%d' % (final_iter))
@@ -144,8 +148,10 @@ def main():
             # plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
             # plt.close()
 
-        print(imidx_list)
-        args.logger.info('imidx_list: #{}', imidx_list)
+        # print(imidx_list)
+        # args.logger.info('imidx_list: #{}', imidx_list)
+
+
         # args.logger.info('gt_label: #{}', gt_label.detach().cpu().data.numpy())
         #
         # for method in methods:

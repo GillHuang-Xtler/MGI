@@ -13,20 +13,20 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
         self.debugOrRun = 'debug_results' # 'debug_results', 'results'
-        self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA'
+        self.dataset = 'lfw' # 'cifar100', 'lfw', 'mnist', 'celebA'
         self.net = 'lenet' # 'lenet', 'fc2'
         self.batch_size = 1
         self.model_path = './model'
         self.root_path = '.'
         self.lr = 1
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 100
+        self.iteration = 300
         self.num_exp = 1
-        # self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG', 'CPA']
-        self.methods = ['DLG', 'iDLG']
+        self.methods = ['DLG', 'iDLG', 'mDLG', 'DLGAdam', 'InvG', 'CPA']
+        # self.methods = ['DLG', 'iDLG']
         self.int_time = int(time.time())
         # self.start_index_str = '_'.join(self.save_name_list)
-        self.log_interval = 10
+        self.log_interval = 30
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
         self.test_data_loader_pickle_path = "data_loaders/cifar100/test_data_loader.pickle"
