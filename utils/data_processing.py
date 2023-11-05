@@ -21,6 +21,19 @@ def weights_init(m):
     except Exception:
         print('warning: failed in weights_init for %s.bias' % m._get_name())
 
+def set_idx(imidx, imidx_list, idx_shuffle):
+
+    '''choose set image or random'''
+    args = arguments.Arguments(logger)
+    if args.get_imidx() == 000000:
+        idx = idx_shuffle[imidx]
+        imidx_list.append(idx)
+    else:
+        idx = args.get_imidx()
+        imidx_list.append(idx)
+
+    return  idx, imidx_list
+
 
 class Dataset_from_Image(Dataset):
     def __init__(self, imgs, labs, transform=None):

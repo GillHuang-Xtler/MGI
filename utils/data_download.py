@@ -42,6 +42,7 @@ def load_data(dataset, root_path, data_path, save_path):
         shape_img = (28, 28)
         input_size = 28
         num_classes = 10
+        alter_num_classes = 2
         channel = 1
         hidden = 588
         dst = datasets.MNIST(data_path, download=True)
@@ -50,6 +51,7 @@ def load_data(dataset, root_path, data_path, save_path):
         shape_img = (32, 32)
         input_size = 32
         num_classes = 100
+        alter_num_classes = 2
         channel = 3
         hidden = 768
         dst = datasets.CIFAR100(data_path, download=True)
@@ -67,6 +69,7 @@ def load_data(dataset, root_path, data_path, save_path):
         shape_img = (32, 32)
         input_size = 32
         num_classes = 5749
+        alter_num_classes = 2
         channel = 3
         hidden = 768
         lfw_path = os.path.join(root_path, './data/lfw')
@@ -78,7 +81,7 @@ def load_data(dataset, root_path, data_path, save_path):
 
     idx_shuffle = np.random.permutation(len(dst))
 
-    return tt, tp, num_classes, channel, hidden, dst, input_size, idx_shuffle
+    return tt, tp, num_classes, alter_num_classes, channel, hidden, dst, input_size, idx_shuffle
 
 # def save_data_loader_to_file(data_loader, file_obj):
 #     pickle.dump(data_loader, file_obj)

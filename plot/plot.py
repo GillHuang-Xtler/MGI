@@ -3,22 +3,22 @@ from os import listdir
 import os
 import numpy as np
 
-myimages = [] #list of image filenames
-dirFiles = os.listdir('.') #list of directory files
-dirFiles.sort() #good initial sort but doesnt sort numerically very well
-sorted(dirFiles) #sort numerically in ascending order
-
-for files in dirFiles: #filter out all non jpgs
-    if '.png' in files:
-        myimages.append(files)
-
-final_imgs = [Image.open(fn) for fn in myimages if fn.endswith('.png')]
-width, height = final_imgs[0].size
-res = Image.new(final_imgs[0].mode, (width * len(final_imgs), height))
-for i, im in enumerate(final_imgs):
-    res.paste(im, box=(i * width, 0))
-
-res.save('compare_all_MNIST.png' )
+# myimages = [] #list of image filenames
+# dirFiles = os.listdir('.') #list of directory files
+# dirFiles.sort() #good initial sort but doesnt sort numerically very well
+# sorted(dirFiles) #sort numerically in ascending order
+#
+# for files in dirFiles: #filter out all non jpgs
+#     if '.png' in files:
+#         myimages.append(files)
+#
+# final_imgs = [Image.open(fn) for fn in myimages if fn.endswith('.png')]
+# width, height = final_imgs[0].size
+# res = Image.new(final_imgs[0].mode, (width * len(final_imgs), height))
+# for i, im in enumerate(final_imgs):
+#     res.paste(im, box=(i * width, 0))
+#
+# res.save('compare_all_MNIST.png' )
 
 # import PIL.Image as Image
 # import sys

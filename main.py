@@ -55,23 +55,24 @@ def main():
     args.logger.info('data_path is #{}:', data_path)
     args.logger.info('save_path is #{}:', save_path)
 
-    tt, tp, num_classes, channel, hidden, dst, input_size, idx_shuffle = load_data(dataset = dataset, root_path = root_path, data_path = data_path, save_path = save_path)
+    tt, tp, num_classes, alter_num_classes, channel, hidden, dst, input_size, idx_shuffle = load_data(dataset = dataset, root_path = root_path, data_path = data_path, save_path = save_path)
 
     ''' train DLG and iDLG and mDLG and DLGAdam'''
     for idx_net in range(num_exp):
 
-        net, net_1 = intialize_nets(args = args, channel = channel, hidden = hidden, num_classes = num_classes, input_size = input_size)
-
         args.logger.info('running #{}|#{} experiment', idx_net, num_exp)
-        net = net.to(device)
-        net_1 = net_1.to(device)
         imidx_lists = []
         final_iters = []
         final_imgs = []
-        #
+
+        '''train on different methods'''
         for method in methods: #
             args.logger.info('#{}, Try to generate #{} images', method, num_dummy)
             if method == 'DLG':
+                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                                            alter_num_classes=alter_num_classes, input_size=input_size)
+                net = net.to(device)
+                net_1 = net_1.to(device)
                 imidx_list, final_iter, final_img = dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
@@ -82,6 +83,10 @@ def main():
                 plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
             elif method == 'iDLG':
+                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                                            alter_num_classes=alter_num_classes, input_size=input_size)
+                net = net.to(device)
+                net_1 = net_1.to(device)
                 imidx_list, final_iter, final_img = idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
@@ -92,6 +97,10 @@ def main():
                 plt.savefig('%s/iDLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
             elif method == 'DLGAdam':
+                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                                            alter_num_classes=alter_num_classes, input_size=input_size)
+                net = net.to(device)
+                net_1 = net_1.to(device)
                 imidx_list, final_iter, final_img = dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
@@ -102,6 +111,10 @@ def main():
                 plt.savefig('%s/DLGAdam_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
             elif method == 'InvG':
+                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                                            alter_num_classes=alter_num_classes, input_size=input_size)
+                net = net.to(device)
+                net_1 = net_1.to(device)
                 imidx_list, final_iter, final_img = invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
@@ -112,6 +125,10 @@ def main():
                 plt.savefig('%s/InvG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
             elif method == 'mDLG':
+                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                                            alter_num_classes=alter_num_classes, input_size=input_size)
+                net = net.to(device)
+                net_1 = net_1.to(device)
                 imidx_list, final_iter, final_img = mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
@@ -122,6 +139,10 @@ def main():
                 plt.savefig('%s/mDLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
             elif method == 'mDLG_mt':
+                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                                            alter_num_classes=alter_num_classes, input_size=input_size)
+                net = net.to(device)
+                net_1 = net_1.to(device)
                 imidx_list, final_iter, final_img = mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)

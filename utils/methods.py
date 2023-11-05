@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import time
 import matplotlib.pyplot as plt
+from utils.data_processing import set_idx
 
 
 def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path):
@@ -11,8 +12,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
     final_iter = Iteration - 1
 
     for imidx in range(num_dummy):
-        idx = idx_shuffle[imidx]
-        imidx_list.append(idx)
+        idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
         tmp_datum = tt(dst[idx][0]).float().to(device)
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
@@ -107,8 +107,7 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     final_iter = Iteration - 1
 
     for imidx in range(num_dummy):
-        idx = idx_shuffle[imidx]
-        imidx_list.append(idx)
+        idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
         tmp_datum = tt(dst[idx][0]).float().to(device)
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
@@ -198,8 +197,7 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
     lr = 0.1
 
     for imidx in range(num_dummy):
-        idx = idx_shuffle[imidx]
-        imidx_list.append(idx)
+        idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
         tmp_datum = tt(dst[idx][0]).float().to(device)
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
@@ -287,8 +285,8 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     lr = 0.1
 
     for imidx in range(num_dummy):
-        idx = idx_shuffle[imidx]
-        imidx_list.append(idx)
+        idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
+
         tmp_datum = tt(dst[idx][0]).float().to(device)
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
@@ -375,8 +373,8 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
     final_iter = Iteration - 1
 
     for imidx in range(num_dummy):
-        idx = idx_shuffle[imidx]
-        imidx_list.append(idx)
+        idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
+
         tmp_datum = tt(dst[idx][0]).float().to(device)
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
@@ -480,19 +478,28 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
     final_iter = Iteration - 1
 
     for imidx in range(num_dummy):
-        idx = idx_shuffle[imidx]
-        imidx_list.append(idx)
+        idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
+
         tmp_datum = tt(dst[idx][0]).float().to(device)
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
-        print(tmp_label, type(tmp_label))
+
+        if dst[idx][1] < 50:
+            tmp_label_1 = torch.Tensor([0]).long().to(device)
+        else:
+            tmp_label_1 = torch.Tensor([1]).long().to(device)
+
         tmp_label = tmp_label.view(1, )
+        tmp_label_1 = tmp_label_1.view(1, )
+
         if imidx == 0:
             gt_data = tmp_datum
             gt_label = tmp_label
+            gt_label_1 = tmp_label_1
         else:
             gt_data = torch.cat((gt_data, tmp_datum), dim=0)
             gt_label = torch.cat((gt_label, tmp_label), dim=0)
+            gt_label_1 = torch.cat((gt_label_1, tmp_label_1), dim=0)
 
 
     # compute original gradient
@@ -500,7 +507,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
     out = net(gt_data)
     out_1 = net_1(gt_data)
     y = criterion(out, gt_label)
-    y_1 = criterion(out_1, gt_label)
+    y_1 = criterion(out_1, gt_label_1)
     dy_dx = torch.autograd.grad(y, net.parameters())
     dy_dx_1 = torch.autograd.grad(y_1, net_1.parameters())
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
@@ -509,6 +516,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+
     # predict the ground-truth label
     label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape(
         (1,)).requires_grad_(False)
@@ -543,11 +551,11 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        if abs(current_loss) < 1e-5:  # converge
-            final_iter = iters
-            print('this is final iter')
-            final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
-            break
+        # if abs(current_loss) < 1e-5:  # converge
+        #     final_iter = iters
+        #     print('this is final iter')
+        #     final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
+        #     break
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
@@ -587,8 +595,8 @@ def cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
     lr = 0.0001
 
     for imidx in range(num_dummy):
-        idx = idx_shuffle[imidx]
-        imidx_list.append(idx)
+        idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
+
         tmp_datum = tt(dst[idx][0]).float().to(device)
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
