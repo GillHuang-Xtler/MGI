@@ -11,7 +11,7 @@ import os
 from plot import plot
 from os import listdir
 import numpy as np
-from utils.methods import dlg, idlg, dlgadam, invg, mdlg, cpa
+from utils.methods import dlg, idlg, dlgadam, invg, mdlg, cpa, mdlg_mt
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -22,7 +22,7 @@ import PIL.Image as Image
 from utils import files
 # logging.getLogger().setLevel(Logging.INFO)
 # from lpips_pytorch import LPIPS, lpips
-from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+# from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 # lpips = LearnedPerceptualImagePatchSimilarity(net_type='squeeze')
 from utils.net import LeNet, FC2
 from utils.data_download import load_data
@@ -121,6 +121,16 @@ def main():
                 plt.axis('off')
                 plt.savefig('%s/mDLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
                 plt.close()
+            elif method == 'mDLG_mt':
+                imidx_list, final_iter, final_img = mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_classes, Iteration, save_path)
+                imidx_lists.append(imidx_list)
+                final_iters.append(final_iter)
+                final_imgs.append(final_img)
+                plt.imshow(final_img[0][0])
+                plt.title('%s_on_iter=%d' % (method, final_iter))
+                plt.axis('off')
+                plt.savefig('%s/mDLGmt_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
+                plt.close()
             elif method == 'CPA':
                 imidx_list, final_iter, final_img = cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
@@ -148,8 +158,8 @@ def main():
             # plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
             # plt.close()
 
-        # print(imidx_list)
-        # args.logger.info('imidx_list: #{}', imidx_list)
+        print(imidx_list)
+        args.logger.info('imidx_list: #{}', imidx_list)
 
 
         # args.logger.info('gt_label: #{}', gt_label.detach().cpu().data.numpy())
