@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 import time
 import matplotlib.pyplot as plt
-from utils.data_processing import set_idx
+from utils.data_processing import set_idx, label_mapping
 
 
 def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path):
@@ -54,7 +54,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        if abs(current_loss) < 1e-5:  # converge
+        if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
             print('this is final iter')
             final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
@@ -81,7 +81,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                # plt.savefig('%s/DLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                plt.savefig('%s/DLG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
                 plt.close()
         elif iters == final_iter:
             print('this is final iter')
@@ -154,7 +154,7 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        if abs(current_loss) < 1e-5:  # converge
+        if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
             print('this is final iter')
             final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
@@ -175,7 +175,7 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                # plt.savefig('%s/iDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                plt.savefig('%s/iDLG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
                 plt.close()
         elif iters == final_iter:
             print('this is final iter')
@@ -240,7 +240,7 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        if abs(current_loss) < 1e-5:  # converge
+        if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
             print('this is final iter')
             final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
@@ -263,7 +263,7 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/DLGAdam_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                plt.savefig('%s/DLGAdam_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
                 plt.close()
         elif iters == final_iter:
             print('this is final iter')
@@ -330,7 +330,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        if abs(current_loss) < 1e-5:  # converge
+        if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
             print('this is final iter')
             final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
@@ -352,7 +352,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/InvG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                plt.savefig('%s/InvG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
                 plt.close()
 
         elif iters == final_iter:
@@ -435,7 +435,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        if abs(current_loss) < 1e-5:  # converge
+        if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
             print('this is final iter')
             final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
@@ -457,7 +457,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/mDLG_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                plt.savefig('%s/mDLG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
                 plt.close()
 
         elif iters == final_iter:
@@ -484,10 +484,9 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
 
-        if dst[idx][1] < 50:
-            tmp_label_1 = torch.Tensor([0]).long().to(device)
-        else:
-            tmp_label_1 = torch.Tensor([1]).long().to(device)
+        '''get new mapping label for the same data sample'''
+        tmp_label_1 = label_mapping(origin_label = dst[idx][1]).to(device)
+        # tmp_label_1 = torch.Tensor([dst[idx][1]]).long().to(device)
 
         tmp_label = tmp_label.view(1, )
         tmp_label_1 = tmp_label_1.view(1, )
@@ -551,11 +550,11 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        # if abs(current_loss) < 1e-5:  # converge
-        #     final_iter = iters
-        #     print('this is final iter')
-        #     final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
-        #     break
+        if abs(current_loss) < args.get_earlystop():  # converge
+            final_iter = iters
+            print('this is final iter')
+            final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
+            break
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
@@ -573,7 +572,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/mDLGmt_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                # plt.savefig('%s/mDLGmt_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
                 plt.close()
 
         elif iters == final_iter:
@@ -639,7 +638,7 @@ def cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        if abs(current_loss) < 1e-5:  # converge
+        if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
             print('this is final iter')
             final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
@@ -661,7 +660,7 @@ def cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/CPA_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+                plt.savefig('%s/CPA_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
                 plt.close()
 
         elif iters == final_iter:

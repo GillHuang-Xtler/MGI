@@ -10,13 +10,14 @@ def files(args):
     """
     log_files = []
     results_files = args.methods
-    # results_files.extend([args.dataset, args.net, str(int(time.time()))])
+    print([args.dataset, args.net, str(int(time.time()))])
+    results_files.extend([args.dataset, args.net, str(int(time.time()))])
     file_name = '_'.join(results_files)
 
     for i in range(args.get_num_exp()):
         idx_str = file_name + '_' + str(i)
 
-        log_files.append("logs/" + idx_str + "1105.log")
+        log_files.append("logs/" + idx_str + "1106.log")
         # results_files.append(idx + "_results.csv")
         # models_folders.append(idx + "_models")
 

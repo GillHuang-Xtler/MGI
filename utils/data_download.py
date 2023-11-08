@@ -51,7 +51,7 @@ def load_data(dataset, root_path, data_path, save_path):
         shape_img = (32, 32)
         input_size = 32
         num_classes = 100
-        alter_num_classes = 2
+        alter_num_classes = 20
         channel = 3
         hidden = 768
         dst = datasets.CIFAR100(data_path, download=True)

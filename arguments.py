@@ -14,20 +14,21 @@ class Arguments:
         self.logger = logger
         self.debugOrRun = 'debug_results' # 'debug_results', 'results'
         self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA'
-        self.set_imidx = 14752 # int or 000000
-        self.net = 'lenet' # 'lenet', 'fc2'
+        self.set_imidx = 000000 # int or 000000
+        self.net = 'resnet' # 'lenet', 'fc2', 'resnet'
+        self.net_mt_diff = True
         self.batch_size = 1
         self.model_path = './model'
         self.root_path = '.'
         self.lr = 1
+        self.earlystop = 1e-9
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 5
+        self.iteration = 300
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
-        self.methods = ['DLG']
+        self.methods = ['mDLG']
         self.int_time = int(time.time())
-        # self.start_index_str = '_'.join(self.save_name_list)
-        self.log_interval = 1
+        self.log_interval = 30
 
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
@@ -60,6 +61,9 @@ class Arguments:
     def get_lr(self):
         return self.lr
 
+    def get_earlystop(self):
+        return self.earlystop
+
     def get_iteration(self):
         return self.iteration
 
@@ -77,6 +81,9 @@ class Arguments:
 
     def get_net(self):
         return self.net
+
+    def get_net_mt_diff(self):
+        return self.net_mt_diff
 
     def get_imidx(self):
         return self.set_imidx

@@ -8,6 +8,7 @@ import logging
 import arguments
 import time
 import os
+import time
 from plot import plot
 from os import listdir
 import numpy as np
@@ -51,6 +52,8 @@ def main():
     device = 'cuda' if use_cuda else 'cpu'
     args.log()
     args.logger.info('dataset is #{}:', dataset)
+    args.logger.info('lr is #{}', lr)
+    args.logger.info('log interval is #{}', log_interval)
     args.logger.info('root path is #{}:', root_path)
     args.logger.info('data_path is #{}:', data_path)
     args.logger.info('save_path is #{}:', save_path)
@@ -143,6 +146,8 @@ def main():
                                             alter_num_classes=alter_num_classes, input_size=input_size)
                 net = net.to(device)
                 net_1 = net_1.to(device)
+                args.logger.info('Size of net_0 is #{}', len(net.state_dict()))
+                args.logger.info('Size of net_1 is #{}', len(net_1.state_dict()))
                 imidx_list, final_iter, final_img = mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
@@ -150,7 +155,7 @@ def main():
                 plt.imshow(final_img[0][0])
                 plt.title('%s_on_iter=%d' % (method, final_iter))
                 plt.axis('off')
-                plt.savefig('%s/mDLGmt_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
+                plt.savefig('%s/mDLGmt_final_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[0], args.get_dataset(),args.get_net(), str(int(time.time()))))
                 plt.close()
             elif method == 'CPA':
                 imidx_list, final_iter, final_img = cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
