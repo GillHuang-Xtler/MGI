@@ -1,2 +1,2 @@
 dir = './data/automobile'
-print("update")
+print("update new")
