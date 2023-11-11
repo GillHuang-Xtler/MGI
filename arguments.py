@@ -15,7 +15,7 @@ class Arguments:
         self.debugOrRun = 'debug_results' # 'debug_results', 'results'
         self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA'
         self.set_imidx = 000000 # int or 000000
-        self.net = 'resnet' # 'lenet', 'fc2', 'resnet'
+        self.net = 'lenet' # 'lenet', 'fc2', 'resnet'
         self.net_mt_diff = True
         self.batch_size = 1
         self.model_path = './model'
@@ -23,7 +23,7 @@ class Arguments:
         self.lr = 1
         self.earlystop = 1e-9
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 300
+        self.iteration = 10
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
         self.methods = ['mDLG']
