@@ -20,15 +20,16 @@ class Arguments:
         self.batch_size = 1
         self.model_path = './model'
         self.root_path = '.'
-        self.lr = 1
+        self.lr = 0.1
+        self.use_game = True
         self.earlystop = 1e-9
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 10
+        self.iteration = 300
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
         self.methods = ['mDLG_mt']
         self.int_time = int(time.time())
-        self.log_interval = 1
+        self.log_interval = 10
 
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"

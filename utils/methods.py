@@ -549,7 +549,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
             normalization_factor = np.ones((1,))
             prvs_alpha = np.ones(n_tasks, dtype=np.float32)
             alpha_param = cp.Variable(shape=(n_tasks,), nonneg=True)
-            prvs_alpha_param = None
+            prvs_alpha_param = prvs_alpha_param = cp.Parameter(shape=(n_tasks,), value=prvs_alpha)
 
             G_param.value = gtg
             normalization_factor_param.value = normalization_factor
@@ -624,8 +624,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
             dummy_loss_1 = criterion(pred_1, label_pred_1)
             dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
             dummy_dy_dx_1 = torch.autograd.grad(dummy_loss_1, net_1.parameters(), create_graph=True)
-            grad_diff = 0
-            alpha = torch.FloatTensor([1,1])
+            alpha = torch.FloatTensor([0.99,0.01])
             dummy_dy_dx_list = [dummy_dy_dx, dummy_dy_dx_1]
             original_dy_dx_list = [original_dy_dx, original_dy_dx_1]
             losses = []
@@ -636,15 +635,14 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
                     _loss += ((gx - gy) ** 2).sum()
                 losses.append(_loss)
 
-            test_alpha = get_weighted_loss(losses= losses, dummy_data= dummy_data)
-            print(test_alpha)
-            grad_diff = sum([losses[i] * alpha[i] for i in range(len(alpha))])
+            game_alpha = get_weighted_loss(losses= losses, dummy_data= dummy_data)
+            game_alpha = [game_alpha[i]/sum(game_alpha) for i in range(len(game_alpha))]
+            print(game_alpha)
 
-            # old version
-            # for gx, gy in zip(dummy_dy_dx, original_dy_dx):
-            #     grad_diff += ((gx - gy) ** 2).sum()
-            # for gx_1, gy_1 in zip(dummy_dy_dx_1, original_dy_dx_1):
-            #     grad_diff += ((gx_1 - gy_1) ** 2).sum()
+            if args.use_game == True:
+                grad_diff = sum([losses[i] * game_alpha[i] for i in range(len(game_alpha))])
+            else:
+                grad_diff = sum([losses[i] * alpha[i] for i in range(len(alpha))])
 
             grad_diff.backward()
             return grad_diff
