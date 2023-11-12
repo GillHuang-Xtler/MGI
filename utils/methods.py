@@ -3,6 +3,9 @@ import torch
 import time
 import matplotlib.pyplot as plt
 from utils.data_processing import set_idx, label_mapping
+import numpy as np
+import cvxpy as cp
+
 
 
 def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path):
@@ -528,6 +531,90 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
     train_iters = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
+        def _stop_criteria(alpha_param, gtg, prvs_alpha_param, alpha_t):
+            return (
+                    (alpha_param.value is None)
+                    or (np.linalg.norm(gtg @ alpha_t - 1 / (alpha_t + 1e-10)) < 1e-3)
+                    or (
+                            np.linalg.norm(alpha_param.value - prvs_alpha_param.value)
+                            < 1e-6
+                    )
+            )
+
+        def solve_optimization(gtg: np.array):
+            n_tasks = 2
+            init_gtg = np.eye(n_tasks)
+            G_param = cp.Parameter(shape=(n_tasks, n_tasks), value=init_gtg)
+            normalization_factor_param = cp.Parameter(shape=(1,), value=np.array([1.0]))
+            normalization_factor = np.ones((1,))
+            prvs_alpha = np.ones(n_tasks, dtype=np.float32)
+            alpha_param = cp.Variable(shape=(n_tasks,), nonneg=True)
+            prvs_alpha_param = None
+
+            G_param.value = gtg
+            normalization_factor_param.value = normalization_factor
+            G_alpha = G_param @ alpha_param
+
+            def _calc_phi_alpha_linearization(G_param, prvs_alpha_param, alpha_param):
+                G_prvs_alpha = G_param @ prvs_alpha_param
+                prvs_phi_tag = 1 / prvs_alpha_param + (1 / G_prvs_alpha) @ G_param
+                phi_alpha = prvs_phi_tag @ (alpha_param - prvs_alpha_param)
+                return phi_alpha
+
+            phi_alpha = _calc_phi_alpha_linearization(G_param, prvs_alpha_param, alpha_param)
+            obj = cp.Minimize(cp.sum(G_alpha) + phi_alpha / normalization_factor_param)
+            constraint = []
+            for i in range(n_tasks):
+                constraint.append(
+                    -cp.log(alpha_param[i] * normalization_factor_param)
+                    - cp.log(G_alpha[i])
+                    <= 0
+                )
+            prob = cp.Problem(obj, constraint)
+            alpha_t = prvs_alpha
+            for _ in range(20):
+                alpha_param.value = alpha_t
+                prvs_alpha_param.value = alpha_t
+
+                try:
+                    prob.solve(solver=cp.ECOS, warm_start=True, max_iters=100)
+                except:
+                    alpha_param.value = prvs_alpha_param.value
+
+                if _stop_criteria(alpha_param, gtg, prvs_alpha_param, alpha_t):
+                    break
+
+                alpha_t = alpha_param.value
+
+            if alpha_t is not None:
+                prvs_alpha = alpha_t
+
+            return prvs_alpha
+
+        def get_weighted_loss(losses,dummy_data):
+            """
+            """
+
+            grads = {}
+            for i, loss in enumerate(losses):
+                g = list(
+                    torch.autograd.grad(
+                        loss,
+                        dummy_data,
+                        retain_graph=True,
+                    )
+                )
+                grad = torch.cat([torch.flatten(grad) for grad in g])
+                grads[i] = grad
+
+            G = torch.stack(tuple(v for v in grads.values()))
+            GTG = torch.mm(G, G.t())
+            normalization_factor = (torch.norm(GTG).detach().cpu().numpy().reshape((1,)))
+            GTG = GTG / normalization_factor.item()
+            alpha = solve_optimization(GTG.cpu().detach().numpy())
+            alpha = torch.from_numpy(alpha)
+
+            return alpha
 
         def closure():
             optimizer.zero_grad()
@@ -538,10 +625,27 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
             dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
             dummy_dy_dx_1 = torch.autograd.grad(dummy_loss_1, net_1.parameters(), create_graph=True)
             grad_diff = 0
-            for gx, gy in zip(dummy_dy_dx, original_dy_dx):
-                grad_diff += ((gx - gy) ** 2).sum()
-            for gx_1, gy_1 in zip(dummy_dy_dx_1, original_dy_dx_1):
-                grad_diff += ((gx_1 - gy_1) ** 2).sum()
+            alpha = torch.FloatTensor([1,1])
+            dummy_dy_dx_list = [dummy_dy_dx, dummy_dy_dx_1]
+            original_dy_dx_list = [original_dy_dx, original_dy_dx_1]
+            losses = []
+
+            for i in range(len(dummy_dy_dx_list)):
+                _loss = 0
+                for gx, gy in zip(dummy_dy_dx_list[i], original_dy_dx_list[i]):
+                    _loss += ((gx - gy) ** 2).sum()
+                losses.append(_loss)
+
+            test_alpha = get_weighted_loss(losses= losses, dummy_data= dummy_data)
+            print(test_alpha)
+            grad_diff = sum([losses[i] * alpha[i] for i in range(len(alpha))])
+
+            # old version
+            # for gx, gy in zip(dummy_dy_dx, original_dy_dx):
+            #     grad_diff += ((gx - gy) ** 2).sum()
+            # for gx_1, gy_1 in zip(dummy_dy_dx_1, original_dy_dx_1):
+            #     grad_diff += ((gx_1 - gy_1) ** 2).sum()
+
             grad_diff.backward()
             return grad_diff
         optimizer.step(closure)
@@ -572,7 +676,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                # plt.savefig('%s/mDLGmt_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
+                plt.savefig('%s/mDLGmt_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
                 plt.close()
 
         elif iters == final_iter:
