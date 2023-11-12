@@ -270,7 +270,7 @@ def solve_optimization(gtg: np.array):
         prvs_alpha_param.value = alpha_t
 
         try:
-            prob.solve(solver=cp.ECOS, warm_start=True, max_iters=100)
+            prob.solve(solver=cp.ECOS_BB, warm_start=True, max_iters=100)
         except:
             alpha_param.value = prvs_alpha_param.value
 
