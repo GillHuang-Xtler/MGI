@@ -21,7 +21,7 @@ class Arguments:
         self.model_path = './model'
         self.root_path = '.'
         self.lr = 0.1
-        self.use_game = True
+        self.use_game = False
         self.earlystop = 1e-9
         self.num_dummy = 1 # the number of reconstructed images
         self.iteration = 300
