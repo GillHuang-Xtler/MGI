@@ -28,6 +28,7 @@ from utils import files
 from utils.net import LeNet, FC2
 from utils.data_download import load_data
 from utils.net_utils import intialize_nets
+from utils.evaluation import PSNR
 
 
 def main():

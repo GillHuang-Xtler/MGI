@@ -6,6 +6,7 @@ from utils.data_processing import set_idx, label_mapping
 import numpy as np
 import cvxpy as cp
 from utils.data_processing import NashMSFL
+from utils.evaluation import PSNR, SSIM, LPIPS
 
 
 
@@ -39,6 +40,9 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
     history_iters = []
     losses = []
     mses = []
+    psnrs = []
+    ssims = []
+    lpipss = []
     train_iters = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
@@ -57,6 +61,9 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
         train_iters.append(iters)
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
+        psnrs.append(PSNR(dummy_data, gt_data))
+        ssims.append(SSIM(dummy_data, gt_data))
+        lpipss.append(LPIPS(dummy_data, gt_data))
 
         if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
@@ -71,8 +78,8 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
-            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}', current_time, iters,
-                             current_loss, mses[-1])
+            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}, psnr = #{}, ssim = #{}, lpips = #{}', current_time, iters,
+                             current_loss, mses[-1], psnrs[-1], ssims[-1], lpipss[-1])
             history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
             history_iters.append(iters)
 
@@ -99,7 +106,10 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
     loss = losses
     label = torch.argmax(dummy_label, dim=-1).detach().item()
     mse = mses
-    args.logger.info('loss of DLG: #{}, mse of DLG: #{}, label of DLG: #{}', loss[-1], mse[-1], label)
+    psnr = psnrs
+    ssim = ssims
+    lpips = lpipss
+    args.logger.info('loss of DLG: #{}, mse of DLG: #{}, label of DLG: #{}, psnr of DLG: #{}, ssim of DLG: #{}, lpips of DLG: #{}', loss[-1], mse[-1], label, psnr[-1], ssim[-1], lpips[-1])
     args.logger.info('final iter: #{}', final_iter)
 
     return imidx_list, final_iter, final_img
