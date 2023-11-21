@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 from utils.data_processing import set_idx, label_mapping
 import numpy as np
 import cvxpy as cp
-from utils.data_processing import NashMSFL
+from utils.data_processing import NashMSFL, total_variation
 from utils.evaluation import PSNR, SSIM, LPIPS
-
+from torchmetrics.image import TotalVariation
 
 
 def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path):
@@ -44,8 +44,10 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
     ssims = []
     lpipss = []
     train_iters = []
+    results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
+        result = []
         def closure():
             optimizer.zero_grad()
             pred = net(dummy_data)
@@ -61,20 +63,26 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
         train_iters.append(iters)
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
-        psnrs.append(PSNR(dummy_data, gt_data))
-        ssims.append(SSIM(dummy_data, gt_data))
-        lpipss.append(LPIPS(dummy_data, gt_data))
+        psnrs.append(float(PSNR(dummy_data, gt_data)))
+        ssims.append(float(SSIM(dummy_data, gt_data)))
+        lpipss.append(float(LPIPS(dummy_data, gt_data)))
+        result.append(mses[-1])
+        result.append(psnrs[-1])
+        result.append(ssims[-1])
+        result.append(lpipss[-1])
 
-        if abs(current_loss) < args.get_earlystop():  # converge
-            final_iter = iters
-            print('this is final iter')
-            final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
-            # plt.imshow(final_img[0][imidx])
-            # plt.title('iter=%d' % (final_iter))
-            # plt.axis('off')
-            # plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
-            # plt.close()
-            break
+        results.append(result)
+
+        # if abs(current_loss) < args.get_earlystop():  # converge
+        #     final_iter = iters
+        #     print('this is final iter')
+        #     final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
+        #     # plt.imshow(final_img[0][imidx])
+        #     # plt.title('iter=%d' % (final_iter))
+        #     # plt.axis('off')
+        #     # plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[imidx]))
+        #     # plt.close()
+        #     break
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
@@ -85,14 +93,18 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
 
             for imidx in range(num_dummy):
                 plt.figure(figsize=(12, 8))
-                plt.subplot(3, 10, 1)
+                plt.subplot(1, 7, 1)
+                plt.tight_layout()
+                plt.subplots_adjust(wspace=0,hspace=0)
                 plt.imshow(tp(gt_data[imidx].cpu()))
-                for i in range(min(len(history), 29)):
-                    plt.subplot(3, 10, i + 2)
+                plt.title('original')
+                plt.axis('off')
+                for i in range(min(len(history), 6)):
+                    plt.subplot(1, 7, i + 2)
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/DLG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
+                plt.savefig('%s/DLG_on_%s_%05d_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net()))
                 plt.close()
         elif iters == final_iter:
             print('this is final iter')
@@ -110,9 +122,11 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
     ssim = ssims
     lpips = lpipss
     args.logger.info('loss of DLG: #{}, mse of DLG: #{}, label of DLG: #{}, psnr of DLG: #{}, ssim of DLG: #{}, lpips of DLG: #{}', loss[-1], mse[-1], label, psnr[-1], ssim[-1], lpips[-1])
-    args.logger.info('final iter: #{}', final_iter)
+    # args.logger.info('final iter: #{}', final_iter)
+    args.logger.info("results : #{}", results)
 
-    return imidx_list, final_iter, final_img
+    return imidx_list, final_iter, final_img, results
+
 
 def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path):
     criterion = nn.CrossEntropyLoss().to(device)
@@ -148,10 +162,14 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     history_iters = []
     losses = []
     mses = []
+    psnrs = []
+    ssims = []
+    lpipss = []
     train_iters = []
+    results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
-
+        result = []
         def closure():
             optimizer.zero_grad()
             pred = net(dummy_data)
@@ -167,29 +185,43 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
         train_iters.append(iters)
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
+        psnrs.append(float(PSNR(dummy_data, gt_data)))
+        ssims.append(float(SSIM(dummy_data, gt_data)))
+        lpipss.append(float(LPIPS(dummy_data, gt_data)))
+        result.append(mses[-1])
+        result.append(psnrs[-1])
+        result.append(ssims[-1])
+        result.append(lpipss[-1])
 
-        if abs(current_loss) < args.get_earlystop():  # converge
-            final_iter = iters
-            print('this is final iter')
-            final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
-            break
+        results.append(result)
+
+        # if abs(current_loss) < args.get_earlystop():  # converge
+        #     final_iter = iters
+        #     print('this is final iter')
+        #     final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
+        #     break
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
-            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}', current_time, iters,
-                             current_loss, mses[-1])
+            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}, psnr = #{}, ssim = #{}, lpips = #{}', current_time, iters,
+                             current_loss, mses[-1], psnrs[-1], ssims[-1], lpipss[-1])
             history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
             history_iters.append(iters)
+
             for imidx in range(num_dummy):
                 plt.figure(figsize=(12, 8))
-                plt.subplot(3, 10, 1)
+                plt.subplot(1, 7, 1)
+                plt.tight_layout()
+                plt.subplots_adjust(wspace=0,hspace=0)
                 plt.imshow(tp(gt_data[imidx].cpu()))
-                for i in range(min(len(history), 29)):
-                    plt.subplot(3, 10, i + 2)
+                plt.title('original')
+                plt.axis('off')
+                for i in range(min(len(history), 6)):
+                    plt.subplot(1, 7, i + 2)
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/iDLG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
+                plt.savefig('%s/iDLG_on_%s_%05d_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net()))
                 plt.close()
         elif iters == final_iter:
             print('this is final iter')
@@ -199,9 +231,15 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     loss = losses
     label = torch.argmax(dummy_label, dim=-1).detach().item()
     mse = mses
-    args.logger.info('loss of iDLG: #{}, mse of iDLG: #{}, label of iDLG: #{}', loss[-1], mse[-1], label)
-    args.logger.info('final iter: #{}', final_iter)
-    return imidx_list, final_iter, final_img
+    psnr = psnrs
+    ssim = ssims
+    lpips = lpipss
+    args.logger.info('loss of iDLG: #{}, mse of iDLG: #{}, label of iDLG: #{}, psnr of iDLG: #{}, ssim of iDLG: #{}, lpips of iDLG: #{}', loss[-1], mse[-1], label, psnr[-1], ssim[-1], lpips[-1])
+    # args.logger.info('final iter: #{}', final_iter)
+    args.logger.info("results : #{}", results)
+
+    return imidx_list, final_iter, final_img, results
+
 
 def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path):
     criterion = nn.CrossEntropyLoss().to(device)
@@ -229,14 +267,19 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
-    optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= lr)
+    optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= 0.1)
     history = []
     history_iters = []
     losses = []
     mses = []
+    psnrs = []
+    ssims = []
+    lpipss = []
     train_iters = []
+    results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
+        result = []
 
         def closure():
             optimizer.zero_grad()
@@ -253,6 +296,15 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
         train_iters.append(iters)
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
+        psnrs.append(float(PSNR(dummy_data, gt_data)))
+        ssims.append(float(SSIM(dummy_data, gt_data)))
+        lpipss.append(float(LPIPS(dummy_data, gt_data)))
+        result.append(mses[-1])
+        result.append(psnrs[-1])
+        result.append(ssims[-1])
+        result.append(lpipss[-1])
+
+        results.append(result)
 
         if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
@@ -263,21 +315,25 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
-            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}', current_time, iters,
-                             current_loss, mses[-1])
+            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}, psnr = #{}, ssim = #{}, lpips = #{}', current_time, iters,
+                             current_loss, mses[-1], psnrs[-1], ssims[-1], lpipss[-1])
             history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
             history_iters.append(iters)
 
             for imidx in range(num_dummy):
                 plt.figure(figsize=(12, 8))
-                plt.subplot(3, 10, 1)
+                plt.subplot(1, 7, 1)
+                plt.tight_layout()
+                plt.subplots_adjust(wspace=0,hspace=0)
                 plt.imshow(tp(gt_data[imidx].cpu()))
-                for i in range(min(len(history), 29)):
-                    plt.subplot(3, 10, i + 2)
+                plt.title('original')
+                plt.axis('off')
+                for i in range(min(len(history), 6)):
+                    plt.subplot(1, 7, i + 2)
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/DLGAdam_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
+                plt.savefig('%s/DLGAdam_on_%s_%05d_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net()))
                 plt.close()
         elif iters == final_iter:
             print('this is final iter')
@@ -286,17 +342,23 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
     loss = losses
     label = torch.argmax(dummy_label, dim=-1).detach().item()
     mse = mses
-    args.logger.info('loss of DLGAdam: #{}, mse of DLGAdam: #{}, label of DLGAdam: #{}', loss[-1], mse[-1], label)
-    args.logger.info('final iter: #{}', final_iter)
+    psnr = psnrs
+    ssim = ssims
+    lpips = lpipss
+    args.logger.info('loss of DLGAdam: #{}, mse of DLGAdam: #{}, label of DLGAdam: #{}, psnr of DLGAdam: #{}, ssim of DLGAdam: #{}, lpips of DLGAdam: #{}', loss[-1], mse[-1], label, psnr[-1], ssim[-1], lpips[-1])
+    # args.logger.info('final iter: #{}', final_iter)
+    args.logger.info("results : #{}", results)
 
-    return imidx_list, final_iter, final_img
+    return imidx_list, final_iter, final_img, results
+
 
 def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
     final_iter = Iteration - 1
-    lr = 0.1
+    lr = 1
+    tv = TotalVariation()
 
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
@@ -323,9 +385,14 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     history_iters = []
     losses = []
     mses = []
+    psnrs = []
+    ssims = []
+    lpipss = []
     train_iters = []
+    results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
+        result = []
 
         def closure():
             optimizer.zero_grad()
@@ -336,6 +403,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
             for gx, gy in zip(dummy_dy_dx, original_dy_dx):
                 cos = nn.CosineSimilarity(dim = 0)
                 grad_diff += (1-cos(gx, gy)).sum()
+            grad_diff += args.tv * total_variation(dummy_data)
             grad_diff.backward()
             return grad_diff
         optimizer.step(closure)
@@ -343,30 +411,44 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
         train_iters.append(iters)
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
+        psnrs.append(float(PSNR(dummy_data, gt_data)))
+        ssims.append(float(SSIM(dummy_data, gt_data)))
+        lpipss.append(float(LPIPS(dummy_data, gt_data)))
+        result.append(mses[-1])
+        result.append(psnrs[-1])
+        result.append(ssims[-1])
+        result.append(lpipss[-1])
 
-        if abs(current_loss) < args.get_earlystop():  # converge
-            final_iter = iters
-            print('this is final iter')
-            final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
-            break
+        results.append(result)
+        #
+        # if abs(current_loss) < args.get_earlystop():  # converge
+        #     final_iter = iters
+        #     print('this is final iter')
+        #     final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
+        #     break
 
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
-            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}', current_time, iters,
-                             current_loss, mses[-1])
+            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}, psnr = #{}, ssim = #{}, lpips = #{}', current_time, iters,
+                             current_loss, mses[-1], psnrs[-1], ssims[-1], lpipss[-1])
             history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
             history_iters.append(iters)
+
             for imidx in range(num_dummy):
                 plt.figure(figsize=(12, 8))
-                plt.subplot(3, 10, 1)
+                plt.subplot(1, 7, 1)
+                plt.tight_layout()
+                plt.subplots_adjust(wspace=0,hspace=0)
                 plt.imshow(tp(gt_data[imidx].cpu()))
-                for i in range(min(len(history), 29)):
-                    plt.subplot(3, 10, i + 2)
+                plt.title('original')
+                plt.axis('off')
+                for i in range(min(len(history), 6)):
+                    plt.subplot(1, 7, i + 2)
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/InvG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
+                plt.savefig('%s/InvG_on_%s_%05d_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net()))
                 plt.close()
 
         elif iters == final_iter:
@@ -376,9 +458,15 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     loss = losses
     label = torch.argmax(dummy_label, dim=-1).detach().item()
     mse = mses
-    args.logger.info('loss of InvG: #{}, mse of InvG: #{}, label of InvG: #{}', loss[-1], mse[-1], label)
-    args.logger.info('final iter: #{}', final_iter)
-    return imidx_list, final_iter, final_img
+    psnr = psnrs
+    ssim = ssims
+    lpips = lpipss
+    args.logger.info('loss of InvG: #{}, mse of InvG: #{}, label of InvG: #{}, psnr of InvG: #{}, ssim of InvG: #{}, lpips of InvG: #{}', loss[-1], mse[-1], label, psnr[-1], ssim[-1], lpips[-1])
+    # args.logger.info('final iter: #{}', final_iter)
+    args.logger.info("results : #{}", results)
+
+    return imidx_list, final_iter, final_img, results
+
 
 def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_classes, Iteration, save_path):
     criterion = nn.CrossEntropyLoss().to(device)
@@ -424,9 +512,14 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
     history_iters = []
     losses = []
     mses = []
+    psnrs = []
+    ssims = []
+    lpipss = []
     train_iters = []
+    results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
+        result = []
 
         def closure():
             optimizer.zero_grad()
@@ -448,30 +541,45 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
         train_iters.append(iters)
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
+        psnrs.append(float(PSNR(dummy_data, gt_data)))
+        ssims.append(float(SSIM(dummy_data, gt_data)))
+        lpipss.append(float(LPIPS(dummy_data, gt_data)))
+        result.append(mses[-1])
+        result.append(psnrs[-1])
+        result.append(ssims[-1])
+        result.append(lpipss[-1])
 
-        if abs(current_loss) < args.get_earlystop():  # converge
-            final_iter = iters
-            print('this is final iter')
-            final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
-            break
+        results.append(result)
+
+        if args.get_earlystop() > 0:
+            early_stop()
+        # if abs(current_loss) < args.get_earlystop():  # converge
+        #     final_iter = iters
+        #     print('this is final iter')
+        #     final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
+        #     break
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
-            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}', current_time, iters,
-                             current_loss, mses[-1])
+            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}, psnr = #{}, ssim = #{}, lpips = #{}', current_time, iters,
+                             current_loss, mses[-1], psnrs[-1], ssims[-1], lpipss[-1])
             history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
             history_iters.append(iters)
 
             for imidx in range(num_dummy):
                 plt.figure(figsize=(12, 8))
-                plt.subplot(3, 10, 1)
+                plt.subplot(1, 7, 1)
+                plt.tight_layout()
+                plt.subplots_adjust(wspace=0,hspace=0)
                 plt.imshow(tp(gt_data[imidx].cpu()))
-                for i in range(min(len(history), 29)):
-                    plt.subplot(3, 10, i + 2)
+                plt.title('original')
+                plt.axis('off')
+                for i in range(min(len(history), 6)):
+                    plt.subplot(1, 7, i + 2)
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/mDLG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
+                plt.savefig('%s/mDLG_on_%s_%05d_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net()))
                 plt.close()
 
         elif iters == final_iter:
@@ -481,9 +589,15 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
     loss = losses
     label = torch.argmax(dummy_label, dim=-1).detach().item()
     mse = mses
-    args.logger.info('loss of mDLG: #{}, mse of mDLG: #{}, label of mDLG: #{}', loss[-1], mse[-1], label)
-    args.logger.info('final iter: #{}', final_iter)
-    return imidx_list, final_iter, final_img
+    psnr = psnrs
+    ssim = ssims
+    lpips = lpipss
+    args.logger.info('loss of mDLG: #{}, mse of mDLG: #{}, label of mDLG: #{}, psnr of mDLG: #{}, ssim of mDLG: #{}, lpips of mDLG: #{}', loss[-1], mse[-1], label, psnr[-1], ssim[-1], lpips[-1])
+    # args.logger.info('final iter: #{}', final_iter)
+    args.logger.info("results : #{}", results)
+
+    return imidx_list, final_iter, final_img, results
+
 
 def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_classes, Iteration, save_path):
     criterion = nn.CrossEntropyLoss().to(device)
@@ -539,9 +653,14 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
     history_iters = []
     losses = []
     mses = []
+    psnrs = []
+    ssims = []
+    lpipss = []
     train_iters = []
+    results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
+        result = []
 
         def closure():
             optimizer.zero_grad()
@@ -583,6 +702,15 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
         train_iters.append(iters)
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
+        psnrs.append(float(PSNR(dummy_data, gt_data)))
+        ssims.append(float(SSIM(dummy_data, gt_data)))
+        lpipss.append(float(LPIPS(dummy_data, gt_data)))
+        result.append(mses[-1])
+        result.append(psnrs[-1])
+        result.append(ssims[-1])
+        result.append(lpipss[-1])
+
+        results.append(result)
 
         if abs(current_loss) < args.get_earlystop():  # converge
             final_iter = iters
@@ -592,21 +720,25 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
-            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}', current_time, iters,
-                             current_loss, mses[-1])
+            args.logger.info('current time: #{}, current iter #{}, loss = #{}, mse = #{}, psnr = #{}, ssim = #{}, lpips = #{}', current_time, iters,
+                             current_loss, mses[-1], psnrs[-1], ssims[-1], lpipss[-1])
             history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
             history_iters.append(iters)
 
             for imidx in range(num_dummy):
                 plt.figure(figsize=(12, 8))
-                plt.subplot(3, 10, 1)
+                plt.subplot(1, 7, 1)
+                plt.tight_layout()
+                plt.subplots_adjust(wspace=0,hspace=0)
                 plt.imshow(tp(gt_data[imidx].cpu()))
-                for i in range(min(len(history), 29)):
-                    plt.subplot(3, 10, i + 2)
+                plt.title('original')
+                plt.axis('off')
+                for i in range(min(len(history), 6)):
+                    plt.subplot(1, 7, i + 2)
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/mDLGmt_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(int(time.time())) ))
+                plt.savefig('%s/mDLGmt_on_%s_%05d_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net()))
                 plt.close()
 
         elif iters == final_iter:
@@ -616,9 +748,15 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_c
     loss = losses
     label = torch.argmax(dummy_label, dim=-1).detach().item()
     mse = mses
-    args.logger.info('loss of mDLGmt: #{}, mse of mDLGmt: #{}, label of mDLGmt: #{}', loss[-1], mse[-1], label)
-    args.logger.info('final iter: #{}', final_iter)
-    return imidx_list, final_iter, final_img
+    psnr = psnrs
+    ssim = ssims
+    lpips = lpipss
+    args.logger.info('loss of mDLGmt: #{}, mse of mDLGmt: #{}, label of mDLGmt: #{}, psnr of mDLGmt: #{}, ssim of mDLGmt: #{}, lpips of mDLGmt: #{}', loss[-1], mse[-1], label, psnr[-1], ssim[-1], lpips[-1])
+    # args.logger.info('final iter: #{}', final_iter)
+    args.logger.info("results : #{}", results)
+
+    return imidx_list, final_iter, final_img, results
+
 
 def cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path):
     criterion = nn.CrossEntropyLoss().to(device)
@@ -672,11 +810,11 @@ def cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
         losses.append(current_loss)
         mses.append(torch.mean((dummy_data - gt_data) ** 2).item())
 
-        if abs(current_loss) < args.get_earlystop():  # converge
-            final_iter = iters
-            print('this is final iter')
-            final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
-            break
+        # if abs(current_loss) < args.get_earlystop():  # converge
+        #     final_iter = iters
+        #     print('this is final iter')
+        #     final_img.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
+        #     break
 
         if iters % int(Iteration / args.log_interval) == 0:
             current_time = str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))

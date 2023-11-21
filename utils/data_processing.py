@@ -9,6 +9,7 @@ import os
 from torch.utils.data import Dataset
 import PIL.Image as Image
 import cvxpy as cp
+import csv
 
 
 def weights_init(m):
@@ -308,3 +309,25 @@ def get_weighted_loss(losses,dummy_data):
     alpha = torch.from_numpy(alpha)
 
     return alpha
+
+def save_results(results, filename):
+    """
+    :param results: experiment results
+    :type results: list()
+    :param filename: File name to write results to
+    :type filename: String
+    """
+    dirname = 'eval_res'
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    with open(os.path.join(dirname,filename), 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',')
+
+        for experiment in results:
+            writer.writerow(experiment)
+
+def total_variation(x):
+    """Anisotropic TV."""
+    dx = torch.mean(torch.abs(x[:, :, :, :-1] - x[:, :, :, 1:]))
+    dy = torch.mean(torch.abs(x[:, :, :-1, :] - x[:, :, 1:, :]))
+    return dx + dy

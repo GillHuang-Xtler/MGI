@@ -17,8 +17,8 @@ def files(args):
     for i in range(args.get_num_exp()):
         idx_str = file_name + '_' + str(i)
 
-        log_files.append("logs/" + idx_str + "1120.log")
-        # results_files.append(idx + "_results.csv")
+        log_files.append("logs/" + idx_str + "1121.log")
+        # results_files.append("eval_res/" + idx_str + "_results.csv")
         # models_folders.append(idx + "_models")
 
-    return log_files #, results_files, models_folders
+    return log_files #, results_files # models_folders
