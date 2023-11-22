@@ -267,7 +267,7 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
-    optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= 0.1)
+    optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= lr)
     history = []
     history_iters = []
     losses = []
@@ -468,7 +468,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     return imidx_list, final_iter, final_img, results
 
 
-def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_classes, Iteration, save_path):
+def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
@@ -488,26 +488,45 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
             gt_data = torch.cat((gt_data, tmp_datum), dim=0)
             gt_label = torch.cat((gt_label, tmp_label), dim=0)
 
-
-    # compute original gradient
-
-    out = net(gt_data)
-    out_1 = net_1(gt_data)
-    y = criterion(out, gt_label)
-    y_1 = criterion(out_1, gt_label)
-    dy_dx = torch.autograd.grad(y, net.parameters())
-    dy_dx_1 = torch.autograd.grad(y_1, net_1.parameters())
-    original_dy_dx = list((_.detach().clone() for _ in dy_dx))
-    original_dy_dx_1 = list((_.detach().clone() for _ in dy_dx_1))
-
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
-    # predict the ground-truth label
-    label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape(
-        (1,)).requires_grad_(False)
-    label_pred_1 = torch.argmin(torch.sum(original_dy_dx_1[-2], dim=-1), dim=-1).detach().reshape(
-        (1,)).requires_grad_(False)    # predict the ground-truth label
+
+    # compute original gradient
+    outs = []
+    ys = []
+    dy_dxs = []
+    original_dy_dxs = []
+    label_preds = []
+    for i in range(len(nets)):
+        out = nets[i](gt_data)
+        outs.append(out)
+        y = criterion(out, gt_label)
+        ys.append(y)
+        dy_dx = torch.autograd.grad(y, nets[i].parameters())
+        dy_dxs.append(dy_dx)
+        original_dy_dx = list((_.detach().clone() for _ in dy_dx))
+        original_dy_dxs.append(original_dy_dx)
+
+        # predict the ground-truth label
+        label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape((1,)).requires_grad_(False)
+        label_preds.append(label_pred)
+    # old
+    # out = net(gt_data)
+    # out_1 = net_1(gt_data)
+    # y = criterion(out, gt_label)
+    # y_1 = criterion(out_1, gt_label)
+    # dy_dx = torch.autograd.grad(y, net.parameters())
+    # dy_dx_1 = torch.autograd.grad(y_1, net_1.parameters())
+    # original_dy_dx = list((_.detach().clone() for _ in dy_dx))
+    # original_dy_dx_1 = list((_.detach().clone() for _ in dy_dx_1))
+    # label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape(
+    #     (1,)).requires_grad_(False)
+    # label_pred_1 = torch.argmin(torch.sum(original_dy_dx_1[-2], dim=-1), dim=-1).detach().reshape(
+    #     (1,)).requires_grad_(False)    # predict the ground-truth label
+
+
+
     history = []
     history_iters = []
     losses = []
@@ -523,19 +542,35 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
 
         def closure():
             optimizer.zero_grad()
-            pred = net(dummy_data)
-            pred_1 = net_1(dummy_data)
-            dummy_loss = criterion(pred, label_pred)
-            dummy_loss_1 = criterion(pred_1, label_pred_1)
-            dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
-            dummy_dy_dx_1 = torch.autograd.grad(dummy_loss_1, net_1.parameters(), create_graph=True)
+            preds = []
+            dummy_losses = []
+            dummy_dy_dxs = []
+            for i in range(len(nets)):
+                preds.append(nets[i](dummy_data))
+                dummy_losses.append(criterion(preds[i], label_preds[i]))
+                dummy_dy_dxs.append(torch.autograd.grad(dummy_losses[i], nets[i].parameters(), create_graph=True))
+
             grad_diff = 0
-            for gx, gy in zip(dummy_dy_dx, original_dy_dx):
-                grad_diff += ((gx - gy) ** 2).sum()
-            for gx_1, gy_1 in zip(dummy_dy_dx_1, original_dy_dx_1):
-                grad_diff += ((gx_1 - gy_1) ** 2).sum()
+            for i in range(len(nets)):
+                for gx, gy in zip(dummy_dy_dxs[i], original_dy_dxs[i]):
+                    grad_diff += ((gx - gy) ** 2).sum()
             grad_diff.backward()
             return grad_diff
+
+            # pred = net(dummy_data)
+            # pred_1 = net_1(dummy_data)
+            # dummy_loss = criterion(pred, label_pred)
+            # dummy_loss_1 = criterion(pred_1, label_pred_1)
+            # dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
+            # dummy_dy_dx_1 = torch.autograd.grad(dummy_loss_1, net_1.parameters(), create_graph=True)
+            # grad_diff = 0
+            # for gx, gy in zip(dummy_dy_dx, original_dy_dx):
+            #     grad_diff += ((gx - gy) ** 2).sum()
+            # for gx_1, gy_1 in zip(dummy_dy_dx_1, original_dy_dx_1):
+            #     grad_diff += ((gx_1 - gy_1) ** 2).sum()
+            # grad_diff.backward()
+            # return grad_diff
+
         optimizer.step(closure)
         current_loss = closure().item()
         train_iters.append(iters)
@@ -551,8 +586,8 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_clas
 
         results.append(result)
 
-        if args.get_earlystop() > 0:
-            early_stop()
+        # if args.get_earlystop() > 0:
+        #     early_stop()
         # if abs(current_loss) < args.get_earlystop():  # converge
         #     final_iter = iters
         #     print('this is final iter')

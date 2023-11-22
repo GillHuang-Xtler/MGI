@@ -73,11 +73,10 @@ def main():
         for method in methods: #
             args.logger.info('#{}, Try to generate #{} images', method, num_dummy)
             if method == 'DLG':
-                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                nets = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
                                             alter_num_classes=alter_num_classes, input_size=input_size)
-                net = net.to(device)
-                net_1 = net_1.to(device)
-                imidx_list, final_iter, final_img, results = dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
+                nets[0] = nets[0].to(device)
+                imidx_list, final_iter, final_img, results = dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
@@ -89,11 +88,10 @@ def main():
                 save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(int(time.time())) + '.csv')
 
             elif method == 'iDLG':
-                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                nets = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
                                             alter_num_classes=alter_num_classes, input_size=input_size)
-                net = net.to(device)
-                net_1 = net_1.to(device)
-                imidx_list, final_iter, final_img, results  = idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
+                nets[0] = nets[0].to(device)
+                imidx_list, final_iter, final_img, results  = idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
@@ -105,11 +103,10 @@ def main():
                 save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(int(time.time())) + '.csv')
 
             elif method == 'DLGAdam':
-                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                nets = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
                                             alter_num_classes=alter_num_classes, input_size=input_size)
-                net = net.to(device)
-                net_1 = net_1.to(device)
-                imidx_list, final_iter, final_img, results = dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
+                nets[0] = nets[0].to(device)
+                imidx_list, final_iter, final_img, results = dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
@@ -121,11 +118,11 @@ def main():
                 save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(int(time.time())) + '.csv')
 
             elif method == 'InvG':
-                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                nets = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
                                             alter_num_classes=alter_num_classes, input_size=input_size)
-                net = net.to(device)
-                net_1 = net_1.to(device)
-                imidx_list, final_iter, final_img, results  = invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path)
+                nets[0] = nets[0].to(device)
+
+                imidx_list, final_iter, final_img, results  = invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
@@ -137,11 +134,11 @@ def main():
                 save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(int(time.time())) + '.csv')
 
             elif method == 'mDLG':
-                net, net_1 = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
+                nets = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
                                             alter_num_classes=alter_num_classes, input_size=input_size)
-                net = net.to(device)
-                net_1 = net_1.to(device)
-                imidx_list, final_iter, final_img ,results = mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, net_1, num_classes, Iteration, save_path)
+                for net in nets:
+                    net = net.to(device)
+                imidx_list, final_iter, final_img ,results = mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path)
                 imidx_lists.append(imidx_list)
                 final_iters.append(final_iter)
                 final_imgs.append(final_img)
