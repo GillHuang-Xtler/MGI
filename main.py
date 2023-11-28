@@ -77,14 +77,14 @@ def main():
                                             alter_num_classes=alter_num_classes, input_size=input_size)
                 nets[0] = nets[0].to(device)
                 imidx_list, final_iter, final_img, results = dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path)
-                imidx_lists.append(imidx_list)
-                final_iters.append(final_iter)
-                final_imgs.append(final_img)
-                plt.imshow(final_img[0][0])
-                plt.title('%s_on_iter=%d' % (method, final_iter))
-                plt.axis('off')
-                plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
-                plt.close()
+                # imidx_lists.append(imidx_list)
+                # final_iters.append(final_iter)
+                # final_imgs.append(final_img)
+                # plt.imshow(final_img[0][0])
+                # plt.title('%s_on_iter=%d' % (method, final_iter))
+                # plt.axis('off')
+                # plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
+                # plt.close()
                 save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(int(time.time())) + '.csv')
 
             elif method == 'iDLG':
@@ -193,7 +193,7 @@ def main():
             # plt.axis('off')
             # plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
             # plt.close()
-
+        save_results(results, root_path + '/' + method + '_' + str(imidx_list[idx_net]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(int(time.time())) + '.csv')
         print(imidx_list)
         args.logger.info('imidx_list: #{}', imidx_list)
 

@@ -18,13 +18,9 @@ class LeNet(nn.Module):
         )
 
     def forward(self, x):
-        # print(x)
         out = self.body(x)
-        # print(out)
         out = out.view(out.size(0), -1)
-        # print(out)
         out = self.fc(out)
-        # print(out)
         return out
 
 

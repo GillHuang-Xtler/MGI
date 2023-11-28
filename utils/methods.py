@@ -473,6 +473,8 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
     imidx_list = []
     final_img = []
     final_iter = Iteration - 1
+    net = nets[0]
+    net_1 = nets[1]
 
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
@@ -488,29 +490,21 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
             gt_data = torch.cat((gt_data, tmp_datum), dim=0)
             gt_label = torch.cat((gt_label, tmp_label), dim=0)
 
-    dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
-    dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
-    optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+
 
     # compute original gradient
-    outs = []
-    ys = []
-    dy_dxs = []
+
     original_dy_dxs = []
     label_preds = []
-    for i in range(len(nets)):
+    for i in range(args.num_servers):
         out = nets[i](gt_data)
-        outs.append(out)
         y = criterion(out, gt_label)
-        ys.append(y)
         dy_dx = torch.autograd.grad(y, nets[i].parameters())
-        dy_dxs.append(dy_dx)
         original_dy_dx = list((_.detach().clone() for _ in dy_dx))
         original_dy_dxs.append(original_dy_dx)
 
         # predict the ground-truth label
-        label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape((1,)).requires_grad_(False)
-        label_preds.append(label_pred)
+        label_preds.append(torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape((1,)).requires_grad_(False))
     # old
     # out = net(gt_data)
     # out_1 = net_1(gt_data)
@@ -520,6 +514,10 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
     # dy_dx_1 = torch.autograd.grad(y_1, net_1.parameters())
     # original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     # original_dy_dx_1 = list((_.detach().clone() for _ in dy_dx_1))
+    dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
+    dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
+    optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+
     # label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape(
     #     (1,)).requires_grad_(False)
     # label_pred_1 = torch.argmin(torch.sum(original_dy_dx_1[-2], dim=-1), dim=-1).detach().reshape(
@@ -542,16 +540,16 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
 
         def closure():
             optimizer.zero_grad()
-            preds = []
-            dummy_losses = []
+
+            # new
             dummy_dy_dxs = []
-            for i in range(len(nets)):
-                preds.append(nets[i](dummy_data))
-                dummy_losses.append(criterion(preds[i], label_preds[i]))
-                dummy_dy_dxs.append(torch.autograd.grad(dummy_losses[i], nets[i].parameters(), create_graph=True))
+            for i in range(args.num_servers):
+                pred = (nets[i](dummy_data))
+                dummy_loss = criterion(pred, label_preds[i])
+                dummy_dy_dxs.append(torch.autograd.grad(dummy_loss, nets[i].parameters(), create_graph=True))
 
             grad_diff = 0
-            for i in range(len(nets)):
+            for i in range(args.num_servers):
                 for gx, gy in zip(dummy_dy_dxs[i], original_dy_dxs[i]):
                     grad_diff += ((gx - gy) ** 2).sum()
             grad_diff.backward()
@@ -614,7 +612,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
                     plt.imshow(history[i][imidx])
                     plt.title('iter=%d' % (history_iters[i]))
                     plt.axis('off')
-                plt.savefig('%s/mDLG_on_%s_%05d_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net()))
+                plt.savefig('%s/mDLG_on_%s_%05d_%s_%s_%s.png' % (save_path, imidx_list, imidx_list[imidx], args.get_dataset(),args.get_net(), str(args.num_servers)))
                 plt.close()
 
         elif iters == final_iter:

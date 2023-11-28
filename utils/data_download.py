@@ -56,6 +56,7 @@ def load_data(dataset, root_path, data_path, save_path):
         hidden = 768
         dst = datasets.CIFAR100(data_path, download=True)
 
+
     elif dataset == 'stl10':
         shape_img = (96,96)
         input_size = 96
