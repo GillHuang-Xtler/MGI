@@ -31,3 +31,5 @@ def LPIPS(dummy_data, gt_data):
     '''
     loss_fn_alex = lpips.LPIPS(net='alex')  # best forward scores
     return loss_fn_alex(dummy_data, gt_data)
+
+

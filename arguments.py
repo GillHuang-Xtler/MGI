@@ -14,7 +14,7 @@ class Arguments:
         self.logger = logger
         self.debugOrRun = 'debug_results' # 'debug_results', 'results'
         self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
-        self.set_imidx = 11111 # int or 000000
+        self.set_imidx = 2 # int or 000000
         self.net = 'lenet' # 'lenet', 'fc2', 'resnet'
         self.net_mt_diff = True
         self.batch_size = 1
@@ -22,16 +22,18 @@ class Arguments:
         self.root_path = '.'
         self.lr = 1
         self.use_game = True
-        self.earlystop = 1e-10
+        self.earlystop = 1e-9
+        self.save_final_img = False
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 300
+        self.iteration = 5
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
         self.methods = ['DLG']
         self.num_servers = 2
         self.int_time = int(time.time())
-        self.log_interval = 6
+        self.log_interval = 1
         self.tv = 1e-2
+        self.eval_metrics = ['mse', 'lpips', 'psnr', 'ssim']
 
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
@@ -43,6 +45,9 @@ class Arguments:
 
     def get_dataset(self):
         return self.dataset
+
+    def get_eval_metrics(self):
+        return self.eval_metrics
 
     def get_train_data_loader_pickle_path(self):
         return self.train_data_loader_pickle_path

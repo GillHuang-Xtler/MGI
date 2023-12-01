@@ -10,8 +10,9 @@ def files(args):
     """
     log_files = []
     results_files = args.methods
+    str_time = str(int(time.time()))
     print([args.dataset, args.net, str(int(time.time()))])
-    results_files.extend([args.dataset, args.net, str(int(time.time()))])
+    results_files.extend([args.dataset, args.net, str_time])
     file_name = '_'.join(results_files)
 
     for i in range(args.get_num_exp()):
@@ -21,4 +22,4 @@ def files(args):
         # results_files.append("eval_res/" + idx_str + "_results.csv")
         # models_folders.append(idx + "_models")
 
-    return log_files #, results_files # models_folders
+    return log_files, str_time #, results_files # models_folders
