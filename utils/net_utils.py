@@ -85,22 +85,28 @@ def init_params(net):
 
 def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes, input_size):
     nets = []
-    if method == 'mDLG_mt_new':
+    if method == 'mDLG_mt':
         args.logger.info('running different task multi server')
-        # for i in range(args.num_servers):
         if args.get_dataset() == 'mnist':
             args.logger.info('running same structure multiserver')
             net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
             net_1 = MNISTCNN(channel=channel, hidden=hidden, num_classes=alter_num_classes)
 
-        elif args.get_dataset() == 'cifar100' and args.get_net_mt_diff() == True:
+        elif args.get_dataset() == 'cifar100':
             args.logger.info('running same structure multiserver')
             net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
             net_1 =LeNet(channel=channel, hidden=hidden, num_classes=alter_num_classes)
             # net_1 = Cifar100ResNet(num_classes = alter_num_classes)
+
+        elif args.get_dataset() == 'lfw':
+            args.logger.info('running same structure multiserver')
+            net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
+            net_1 =LeNet(channel=channel, hidden=hidden, num_classes=alter_num_classes)
+
         else:
             net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
             net_1 = LeNet(channel=channel, hidden=hidden, num_classes=alter_num_classes)
+
         net.apply(weights_init)
         net_1.apply(weights_init)
         nets.append(net)
@@ -112,7 +118,7 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
         args.logger.info('number of servers: #{}', num_servers)
         if args.get_net() == "lenet":
             for i in range(num_servers):
-                net = LeNet(num_classes = num_classes)
+                net = LeNet(channel=channel, hidden=hidden,num_classes = num_classes)
                 net.apply(weights_init)
                 nets.append(net)
         elif args.get_net() == 'resnet':

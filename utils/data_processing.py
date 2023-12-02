@@ -5,11 +5,43 @@ from loguru import logger
 import arguments
 import torchvision
 import torch
-
+import os
 from torch.utils.data import Dataset
 import PIL.Image as Image
 import cvxpy as cp
 
+def get_lfw_gender_mapping(lfw_path):
+    images_all = []
+    labels_all = []
+    male_images = []
+    female_images = []
+    gender_mapping_dict = {0:[], 1:[]}
+    folders = os.listdir(lfw_path)
+    for foldidx, fold in enumerate(folders):
+        files = os.listdir(os.path.join(lfw_path, fold))
+        for f in files:
+            if len(f) > 4 and f[-4:] == '.jpg':
+                images_all.append(os.path.join(lfw_path, fold, f))
+                labels_all.append(foldidx)
+    with open('male_names.txt', 'r') as f:
+        for line in f:
+            male_images.append(line.strip('\n').split(',')[0])
+    # print(male_images)
+    with open('female_names.txt', 'r') as f:
+        for line in f:
+            female_images.append(line.strip('\n').split(',')[0])
+    # print(female_images)
+    for i in range(len(images_all)):
+        if images_all[i].split('/')[-1] in male_images:
+            gender_mapping_dict[0].append(labels_all[i])
+        elif images_all[i].split('/')[-1] in female_images:
+            gender_mapping_dict[1].append(labels_all[i])
+        else:
+            gender_mapping_dict[0].append(labels_all[i])
+    gender_mapping_dict[0] = list(set(gender_mapping_dict[0]))
+    gender_mapping_dict[1] = list(set(gender_mapping_dict[1]))
+    # print(gender_mapping_dict)
+    return gender_mapping_dict
 
 def weights_init(m):
     try:
@@ -36,13 +68,17 @@ def set_idx(imidx, imidx_list, idx_shuffle):
 
     return  idx, imidx_list
 
+
+
+
 def label_mapping(origin_label):
     args = arguments.Arguments(logger)
-    if args.get_dataset() == 'mnist':
+    if args.get_dataset() == 'mnist' or args.get_dataset() == 'stl10':
         if origin_label < 5:
             tmp_label_1 = torch.Tensor([0]).long()
         else:
             tmp_label_1 = torch.Tensor([1]).long()
+
     elif args.get_dataset() == 'cifar100':
         mapping_dict = {0: [4, 30, 55, 72, 95],
                         1: [1, 32, 67, 73, 91],
@@ -65,7 +101,12 @@ def label_mapping(origin_label):
                         18: [8, 13, 48, 58, 90],
                         19: [41, 69, 81, 85, 89]}
         tmp_label_1 = torch.Tensor([k for k, v in mapping_dict.items() if origin_label in v]).long()
+    elif args.get_dataset() == 'lfw':
+        mapping_dict = get_lfw_gender_mapping('./data/lfw')
+        tmp_label_1 = torch.Tensor([k for k, v in mapping_dict.items() if origin_label in v]).long()
+
     else:
+        print('no other label found')
         tmp_label_1 = torch.Tensor([origin_label]).long()
 
     return tmp_label_1

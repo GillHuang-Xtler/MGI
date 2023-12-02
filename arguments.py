@@ -13,8 +13,8 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
         self.debugOrRun = 'debug_results' # 'debug_results', 'results'
-        self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
-        self.set_imidx = 1 # int or 000000
+        self.dataset = 'lfw' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
+        self.set_imidx = 000000 # int or 000000
         self.net = 'lenet' # 'lenet', 'fc2', 'resnet'
         self.net_mt_diff = True
         self.batch_size = 1
@@ -25,11 +25,11 @@ class Arguments:
         self.earlystop = 1e-9
         self.save_final_img = False
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 5
+        self.iteration = 1
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
         self.methods = ['mDLG_mt']
-        self.diff_task_agg = 'game' # 'single', 'random', 'game'
+        self.diff_task_agg = 'single' # 'single', 'random', 'game'
         self.num_servers = 2
         self.int_time = int(time.time())
         self.log_interval = 1
