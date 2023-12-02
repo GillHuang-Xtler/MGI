@@ -12,7 +12,7 @@ import time
 from plot import plot
 from os import listdir
 import numpy as np
-from utils.methods import dlg, idlg, dlgadam, invg, mdlg, cpa, mdlg_mt, mdlg_mt_new
+from utils.methods import dlg, idlg, dlgadam, invg, mdlg, cpa, mdlg_mt
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -28,7 +28,7 @@ from utils import files
 from utils.net import LeNet, FC2
 from utils.data_download import load_data
 from utils.net_utils import intialize_nets
-from utils.data_processing import save_results
+from utils.save import save_results
 
 
 def main():
@@ -141,14 +141,14 @@ def main():
                 plt.close()
                 save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str_time + '.csv')
 
-            elif method == 'mDLG_mt_new':
+            elif method == 'mDLG_mt':
                 nets = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
                                             alter_num_classes=alter_num_classes, input_size=input_size)
                 for i in range(len(nets)):
                     nets[i] = nets[i].to(device)
                     args.logger.info('Size of net #{} is #{}',i, len(nets[i].state_dict()))
-                imidx_list, final_iter, final_img, results = mdlg_mt_new(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time)
-                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str_time + '.csv')
+                imidx_list, final_iter, final_img, results = mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time)
+                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.diff_task_agg + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str_time + '.csv')
 
             elif method == 'CPA':
                 imidx_list, final_iter, final_img = cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path, str_time)
@@ -176,7 +176,7 @@ def main():
             # plt.axis('off')
             # plt.savefig('%s/DLG_final_on_%s_%05d.png' % (save_path, imidx_list, imidx_list[0]))
             # plt.close()
-        save_results(results, root_path + '/' + method + '_' + str(imidx_list[idx_net]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(int(time.time())) + '.csv')
+        # save_results(results, root_path + '/' + method + '_' + str(imidx_list[idx_net]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(int(time.time())) + '.csv')
         print(imidx_list)
         args.logger.info('imidx_list: #{}', imidx_list)
 

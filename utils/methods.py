@@ -404,7 +404,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
 
     return imidx_list, final_iter, final_img, results
 
-def mdlg_mt_new(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
+def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
@@ -464,7 +464,8 @@ def mdlg_mt_new(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_cla
 
         def closure():
             optimizer.zero_grad()
-            alpha = torch.FloatTensor([0.99,0.01])
+            single_alpha = torch.FloatTensor([1,0])
+            random_alpha = torch.FloatTensor([torch.randint(1, (1,))[0], 1 - torch.randint(1, (1,))[0]])
 
             # new
             dummy_dy_dxs = []
@@ -483,10 +484,12 @@ def mdlg_mt_new(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_cla
             _, _, game_alpha = game.get_weighted_loss(losses= losses, dummy_data= dummy_data)
             game_alpha = [game_alpha[i]/sum(game_alpha) for i in range(len(game_alpha))]
 
-            if args.use_game == True:
+            if args.diff_task_agg == 'game':
                 grad_diff = sum([losses[i] * game_alpha[i] for i in range(len(game_alpha))])
-            else:
-                grad_diff = sum([losses[i] * alpha[i] for i in range(len(alpha))])
+            elif args.diff_task_agg == 'single':
+                grad_diff = sum([losses[i] * single_alpha[i] for i in range(len(single_alpha))])
+            elif args.diff_task_agg == 'random':
+                grad_diff = sum([losses[i] * random_alpha[i] for i in range(len(random_alpha))])
 
             grad_diff.backward()
             return grad_diff
@@ -519,7 +522,7 @@ def mdlg_mt_new(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_cla
 
     return imidx_list, final_iter, final_img, results
 
-def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
+def mdlg_mt_old(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []

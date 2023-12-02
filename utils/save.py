@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 from utils.evaluation import PSNR, SSIM, LPIPS
 import torch
+import os
+import csv
+
 
 def save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list, str_time):
     history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
@@ -61,3 +64,19 @@ def save_eval(eval_metrics, dummy_data, gt_data):
         lpips = float(LPIPS(dummy_data, gt_data))
 
     return [mse, lpips, psnr, ssim]
+
+def save_results(results, filename):
+    """
+    :param results: experiment results
+    :type results: list()
+    :param filename: File name to write results to
+    :type filename: String
+    """
+    dirname = 'eval_res'
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    with open(os.path.join(dirname,filename), 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',')
+
+        for experiment in results:
+            writer.writerow(experiment)
