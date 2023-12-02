@@ -88,29 +88,35 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
     if method == 'mDLG_mt':
         args.logger.info('running different task multi server')
         if args.get_dataset() == 'mnist':
-            args.logger.info('running same structure multiserver')
-            net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
-            net_1 = MNISTCNN(channel=channel, hidden=hidden, num_classes=alter_num_classes)
+            args.logger.info('running same structure multiserver mnist')
+            class_list  = [num_classes, alter_num_classes]
+            for i in range(args.num_servers):
+                net = LeNet(channel=channel, hidden=hidden, num_classes= class_list[i])
+                net.apply(weights_init)
+                nets.append(net)
 
         elif args.get_dataset() == 'cifar100':
-            args.logger.info('running same structure multiserver')
-            net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
-            net_1 =LeNet(channel=channel, hidden=hidden, num_classes=alter_num_classes)
-            # net_1 = Cifar100ResNet(num_classes = alter_num_classes)
+            args.logger.info('running same structure multiserver cifar100')
+            class_list  = [num_classes, alter_num_classes, 10, 5, 2]
+            for i in range(args.num_servers):
+                net = LeNet(channel=channel, hidden=hidden, num_classes= class_list[i])
+                net.apply(weights_init)
+                nets.append(net)
 
         elif args.get_dataset() == 'lfw':
-            args.logger.info('running same structure multiserver')
-            net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
-            net_1 =LeNet(channel=channel, hidden=hidden, num_classes=alter_num_classes)
+            args.logger.info('running same structure multiserver lfw')
+            class_list  = [num_classes, alter_num_classes]
+            for i in range(args.num_servers):
+                net = LeNet(channel=channel, hidden=hidden, num_classes= class_list[i])
+                net.apply(weights_init)
+                nets.append(net)
 
         else:
-            net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
-            net_1 = LeNet(channel=channel, hidden=hidden, num_classes=alter_num_classes)
-
-        net.apply(weights_init)
-        net_1.apply(weights_init)
-        nets.append(net)
-        nets.append(net_1)
+            class_list  = [num_classes, alter_num_classes,]
+            for i in range(args.num_servers):
+                net = LeNet(channel=channel, hidden=hidden, num_classes= class_list[0])
+                net.apply(weights_init)
+                nets.append(net)
 
     elif method == 'mDLG':
         args.logger.info('running same task multi server')

@@ -22,8 +22,8 @@ def save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_
             plt.imshow(history[i][imidx])
             plt.title('iter=%d' % (history_iters[i]))
             plt.axis('off')
-        plt.savefig('%s/%s_on_%s_%05d_%s_%s_%s.png' % (
-        save_path, args.methods[0],imidx_list, imidx_list[imidx], args.get_dataset(), args.get_net(), str_time))
+        plt.savefig('%s/%s_on_%s_%s_%s_%s_%s.png' % (
+        save_path, args.methods[0], imidx_list[imidx], args.get_dataset(), args.get_net(), args.num_servers, str_time))
         plt.close()
 
 def save_final_img(iters, final_iter,final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list):

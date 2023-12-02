@@ -4,8 +4,8 @@ import time
 import matplotlib.pyplot as plt
 from utils.data_processing import set_idx, label_mapping
 import numpy as np
-import cvxpy as cp
-from utils.data_processing import NashMSFL, total_variation
+from .game import NashMSFL
+from utils.data_processing import total_variation
 from torchmetrics.image import TotalVariation
 from utils.save import save_img, early_stop, save_final_img, save_eval
 
@@ -420,12 +420,12 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
 
         '''get new mapping label for the same data sample'''
         if args.num_servers > 1:
-            tmp_labels.append(label_mapping(origin_label = dst[idx][1]).to(device))
+            for i in range(args.num_servers-1):
+                tmp_labels.append(label_mapping(origin_label = dst[idx][1], idx = i).to(device))
         # tmp_label_1 = torch.Tensor([dst[idx][1]]).long().to(device)
 
         for i in range(args.num_servers):
             tmp_labels[i] = tmp_labels[i].view(1, )
-
 
         if imidx == 0:
             gt_data = tmp_datum
@@ -464,8 +464,11 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
 
         def closure():
             optimizer.zero_grad()
-            single_alpha = torch.FloatTensor([1,0])
-            random_alpha = torch.FloatTensor([torch.randint(1, (1,))[0], 1 - torch.randint(1, (1,))[0]])
+            single_alpha = torch.FloatTensor([0,1])
+            # _ = torch.randint(1, (1,))[0]
+            _ = torch.rand(1)
+            random_alpha = torch.FloatTensor([_, 1 - _])
+            random_alpha = [0.4, 0.3, 0.3]
 
             # new
             dummy_dy_dxs = []
@@ -480,11 +483,16 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
                     _loss += ((gx - gy) ** 2).sum()
                 losses.append(_loss)
 
-            game = NashMSFL()
-            _, _, game_alpha = game.get_weighted_loss(losses= losses, dummy_data= dummy_data)
-            game_alpha = [game_alpha[i]/sum(game_alpha) for i in range(len(game_alpha))]
+
+
+            # add class num into weights
+            class_list = [5749, 2]
+            # game_alpha = np.multiply(game_alpha, class_list)
 
             if args.diff_task_agg == 'game':
+                game = NashMSFL(n_tasks=args.num_servers)
+                _, _, game_alpha = game.get_weighted_loss(losses=losses, dummy_data=dummy_data)
+                game_alpha = [game_alpha[i] / sum(game_alpha) for i in range(len(game_alpha))]
                 grad_diff = sum([losses[i] * game_alpha[i] for i in range(len(game_alpha))])
             elif args.diff_task_agg == 'single':
                 grad_diff = sum([losses[i] * single_alpha[i] for i in range(len(single_alpha))])

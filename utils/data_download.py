@@ -11,7 +11,6 @@ from .data_processing import Dataset_from_Image
 
 
 
-
 def lfw_dataset(lfw_path, shape_img):
     images_all = []
     labels_all = []
@@ -22,7 +21,6 @@ def lfw_dataset(lfw_path, shape_img):
             if len(f) > 4 and f[-4:] == '.jpg':
                 images_all.append(os.path.join(lfw_path, fold, f))
                 labels_all.append(foldidx)
-
     transform = transforms.Compose([transforms.Resize(size=shape_img)])
     dst = Dataset_from_Image(images_all, np.asarray(labels_all, dtype=int), transform=transform)
     return dst

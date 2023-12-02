@@ -13,8 +13,8 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
         self.debugOrRun = 'debug_results' # 'debug_results', 'results'
-        self.dataset = 'lfw' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
-        self.set_imidx = 000000 # int or 000000
+        self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
+        self.set_imidx = 1 # int or 000000
         self.net = 'lenet' # 'lenet', 'fc2', 'resnet'
         self.net_mt_diff = True
         self.batch_size = 1
@@ -25,14 +25,14 @@ class Arguments:
         self.earlystop = 1e-9
         self.save_final_img = False
         self.num_dummy = 1 # the number of reconstructed images
-        self.iteration = 1
+        self.iteration = 100
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
-        self.methods = ['mDLG_mt']
-        self.diff_task_agg = 'single' # 'single', 'random', 'game'
+        self.methods = ['mDLG']
+        self.diff_task_agg = 'game' # 'single', 'random', 'game'
         self.num_servers = 2
         self.int_time = int(time.time())
-        self.log_interval = 1
+        self.log_interval = 4
         self.tv = 1e-2
         self.eval_metrics = ['mse', 'lpips', 'psnr', 'ssim']
 
@@ -111,5 +111,7 @@ class Arguments:
                "Methods: {}\n".format(self.methods) + \
                "Number Exp: {}\n".format(self.num_exp) + \
                "Dataset: {}\n".format(self.dataset) + \
+               "Number Server: {}\n".format(self.num_servers) + \
+               "Set Imidx: {}\n".format(self.set_imidx) + \
                "Log Interval: {}\n".format(self.log_interval)
 

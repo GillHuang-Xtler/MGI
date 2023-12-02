@@ -2,7 +2,7 @@
 import torch.nn as nn
 
 class LeNet(nn.Module):
-    def __init__(self, channel=3, hidden=768, num_classes=10):
+    def __init__(self, channel, hidden, num_classes):
         super(LeNet, self).__init__()
         act = nn.Sigmoid                                                    # input 1*3*32*32
         self.body = nn.Sequential(
