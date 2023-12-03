@@ -325,6 +325,8 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
         tmp_label = tmp_label.view(1, )
+        dummy_data = tt(dst[999][0]).float().to(device)
+        dummy_data = dummy_data.view(1, *dummy_data.size())
         if imidx == 0:
             gt_data = tmp_datum
             gt_label = tmp_label
@@ -346,7 +348,13 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
         # predict the ground-truth label
         label_preds.append(torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape((1,)).requires_grad_(False))
 
-    dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
+    # initialize random image
+
+    # dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
+    # dummy_data = torch.rand(gt_data.size()).to(device).requires_grad_(True)
+    # dummy_data = torch.randint(255, gt_data.size()).float().to(device)
+
+
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
 

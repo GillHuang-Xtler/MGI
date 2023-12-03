@@ -77,21 +77,21 @@ def main():
                                             alter_num_classes=alter_num_classes, input_size=input_size)
                 nets[0] = nets[0].to(device)
                 imidx_list, final_iter, final_img, results = dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path, str_time)
-                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + args.num_servers + '_' + str_time + '.csv')
+                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(args.num_servers) + '_' + str_time + '.csv')
 
             elif method == 'iDLG':
                 nets = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
                                             alter_num_classes=alter_num_classes, input_size=input_size)
                 nets[0] = nets[0].to(device)
                 imidx_list, final_iter, final_img, results  = idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path, str_time)
-                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + args.num_servers + '_' + str_time + '.csv')
+                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(args.num_servers) + '_' + str_time + '.csv')
 
             elif method == 'DLGAdam':
                 nets = intialize_nets(method = method, args=args, channel=channel, hidden=hidden, num_classes=num_classes,
                                             alter_num_classes=alter_num_classes, input_size=input_size)
                 nets[0] = nets[0].to(device)
                 imidx_list, final_iter, final_img, results = dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path, str_time)
-                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + args.num_servers + '_' + str_time + '.csv')
+                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(args.num_servers) + '_' + str_time + '.csv')
 
 
             elif method == 'InvG':
@@ -100,7 +100,7 @@ def main():
                 nets[0] = nets[0].to(device)
 
                 imidx_list, final_iter, final_img, results  = invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets[0], num_classes, Iteration, save_path, str_time)
-                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + args.num_servers + '_' + str_time + '.csv')
+                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(args.num_servers) + '_' + str_time + '.csv')
 
 
             elif method == 'mDLG':
@@ -109,7 +109,7 @@ def main():
                 for net in nets:
                     net = net.to(device)
                 imidx_list, final_iter, final_img ,results = mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time)
-                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + args.num_servers + '_' + str_time + '.csv')
+                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(args.num_servers) + '_' + str_time + '.csv')
 
 
             elif method == 'mDLG_mt':
@@ -119,7 +119,7 @@ def main():
                     nets[i] = nets[i].to(device)
                     args.logger.info('Size of net #{} is #{}',i, len(nets[i].state_dict()))
                 imidx_list, final_iter, final_img, results = mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time)
-                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.diff_task_agg + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str_time + '.csv')
+                save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(args.num_servers) + '_' + str_time + '.csv')
 
             elif method == 'CPA':
                 imidx_list, final_iter, final_img = cpa(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path, str_time)

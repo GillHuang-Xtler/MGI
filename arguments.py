@@ -13,8 +13,8 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
         self.debugOrRun = 'debug_results' # 'debug_results', 'results'
-        self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
-        self.set_imidx = 1 # int or 000000
+        self.dataset = 'lfw' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
+        self.set_imidx = 7333 # int or 000000
         self.net = 'lenet' # 'lenet', 'fc2', 'resnet'
         self.net_mt_diff = True
         self.batch_size = 1
