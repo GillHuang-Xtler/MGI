@@ -122,7 +122,7 @@ def main():
                 for i in range(len(nets)):
                     nets[i] = nets[i].to(device)
                     args.logger.info('Size of net #{} is #{}',i, len(nets[i].state_dict()))
-                imidx_list, final_iter, final_img, results = mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time)
+                imidx_list, final_iter, final_img, results = mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_classes, Iteration, save_path, str_time)
                 save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(args.num_servers) + '_' + str_time + '.csv')
 
             elif method == 'CPA':

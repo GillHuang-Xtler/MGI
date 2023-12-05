@@ -438,13 +438,17 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
 
     return imidx_list, final_iter, final_img, results
 
-def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
+def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
     final_iter = Iteration - 1
     tmp_labels = []
     gt_labels = []
+
+    d_mean, d_std = mean_std
+    dm = torch.as_tensor(d_mean, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
+    ds = torch.as_tensor(d_std, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
 
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
@@ -483,13 +487,17 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
         # predict the ground-truth label
         label_preds.append(torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape((1,)).requires_grad_(False))
 
-    dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
+    dummy_data = torch.randn(gt_data.size(), dtype=next(nets[0].parameters()).dtype).to(device).requires_grad_(True)
+
+    with torch.no_grad():
+        dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
 
     history = []
     history_iters = []
-    losses = []
+    # losses = []
     train_iters = []
     results = []
     args.logger.info('lr = #{}', args.lr)
@@ -535,12 +543,19 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
             grad_diff.backward()
             return grad_diff
 
-        optimizer.step(closure)
-        current_loss = closure().item()
+        current_loss = optimizer.step(closure)
+
+        with torch.no_grad():
+            # Project into image space
+            dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+
+            if (iters + 1 == args.iteration) or iters % 500 == 0:
+                print(f'It: {iters}. Rec. loss: {current_loss.item():2.4f}.')
+
         train_iters.append(iters)
-        losses.append(current_loss)
+        # losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
+        args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
 
         if args.earlystop > 0:
@@ -552,11 +567,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
         # save the training image
         if iters % int(Iteration / args.log_interval) == 0:
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
-                     str_time)
-
-        # save the final image
-        if args.save_final_img:
-            save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
+                     str_time, mean_std)
 
     label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
