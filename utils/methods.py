@@ -312,11 +312,15 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
     return imidx_list, final_iter, final_img, results
 
 
-def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
+def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
     final_iter = Iteration - 1
+
+    d_mean, d_std = mean_std
+    dm = torch.as_tensor(d_mean, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
+    ds = torch.as_tensor(d_std, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
 
     for imidx in range(num_dummy):
 
@@ -360,9 +364,12 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
         label_preds.append(j)
 
     # initialize random image
-    dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
+    dummy_data = torch.randn(gt_data.size(), dtype=next(nets[0].parameters()).dtype).to(device).requires_grad_(True)
     # dummy_data = torch.rand(gt_data.size()).to(device).requires_grad_(True)
     # dummy_data = torch.randint(255, gt_data.size()).float().to(device)
+
+    with torch.no_grad():
+        dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
 
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     if args.num_dummy > 1:
@@ -396,6 +403,13 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
             return grad_diff
 
         current_loss = optimizer.step(closure)
+        with torch.no_grad():
+            # Project into image space
+            dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+
+            if (iters + 1 == args.iteration) or iters % 500 == 0:
+                print(f'It: {iters}. Rec. loss: {current_loss.item():2.4f}.')
+
         train_iters.append(iters)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
         if iters % 100 == 0:
@@ -412,7 +426,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
         # save the training image
         if iters % int(Iteration / args.log_interval) == 0:
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
-                     str_time)
+                     str_time, mean_std)
 
     args.logger.info("inversion finished")
 

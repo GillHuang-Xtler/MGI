@@ -5,7 +5,13 @@ import os
 import csv
 
 
-def save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list, str_time):
+def save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list, str_time, mean_std):
+    d_mean, d_std = mean_std
+    dm = torch.as_tensor(d_mean)[:, None, None].cuda()
+    ds = torch.as_tensor(d_std)[:, None, None].cuda()
+    dummy_data = torch.clamp(dummy_data * ds + dm, 0, 1)
+    gt_data = torch.clamp(gt_data * ds + dm, 0, 1)
+
     history.append([tp(dummy_data[imidx].cpu()) for imidx in range(num_dummy)])
     history_iters.append(iters)
 

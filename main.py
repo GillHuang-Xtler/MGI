@@ -59,7 +59,7 @@ def main():
     args.logger.info('data_path is #{}:', data_path)
     args.logger.info('save_path is #{}:', save_path)
 
-    tt, tp, num_classes, alter_num_classes, channel, hidden, dst, input_size, idx_shuffle = load_data(dataset = dataset, root_path = root_path, data_path = data_path, save_path = save_path)
+    tt, tp, num_classes, alter_num_classes, channel, hidden, dst, input_size, idx_shuffle, mean_std = load_data(dataset = dataset, root_path = root_path, data_path = data_path, save_path = save_path)
 
     ''' train DLG and iDLG and mDLG and DLGAdam'''
     for idx_net in range(num_exp):
@@ -112,7 +112,7 @@ def main():
                                             alter_num_classes=alter_num_classes, input_size=input_size)
                 for net in nets:
                     net = net.to(device)
-                imidx_list, final_iter, final_img ,results = mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time)
+                imidx_list, final_iter, final_img ,results = mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_classes, Iteration, save_path, str_time)
                 save_results(results, root_path + '/' + method + '_' + str(imidx_list[0]) + '_' + args.get_dataset() + '_' + args.get_net() + '_' + str(args.num_servers) + '_' + str_time + '.csv')
 
 

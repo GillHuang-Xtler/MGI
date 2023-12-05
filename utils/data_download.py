@@ -31,7 +31,8 @@ def load_data(dataset, root_path, data_path, save_path):
     tt = transforms.Compose([transforms.ToTensor()])
     tp = transforms.Compose([transforms.ToPILImage()])
 
-
+    d_mean = [0.5, 0.5, 0.5]
+    d_std = [0.5, 0.5, 0.5]
 
     if not os.path.exists('res'):
         os.mkdir('res')
@@ -57,6 +58,11 @@ def load_data(dataset, root_path, data_path, save_path):
         hidden = 768
         dst = datasets.CIFAR100(data_path, download=True)
 
+        d_mean = [0.5071598291397095, 0.4866936206817627, 0.44120192527770996]
+        d_std = [0.2673342823982239, 0.2564384639263153, 0.2761504650115967]
+        tt = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(d_mean, d_std)])
 
     elif dataset == 'stl10':
         shape_img = (96,96)
@@ -83,4 +89,4 @@ def load_data(dataset, root_path, data_path, save_path):
 
     idx_shuffle = np.random.permutation(len(dst))
 
-    return tt, tp, num_classes, alter_num_classes, channel, hidden, dst, input_size, idx_shuffle
+    return tt, tp, num_classes, alter_num_classes, channel, hidden, dst, input_size, idx_shuffle, [d_mean, d_std]
