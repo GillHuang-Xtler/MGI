@@ -371,7 +371,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
         if args.optim == 'LBFGS':
             optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
         else:
-            optimizer = optimizer = torch.optim.Adam([dummy_data, ], lr=args.lr)
+            optimizer = torch.optim.Adam([dummy_data, ], lr=args.lr)
 
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
             milestones=[args.iteration // 2.667, args.iteration // 1.6, args.iteration // 1.142], gamma=0.1)
@@ -493,7 +493,15 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
         dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
 
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
-    optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+
+    if args.optim == 'LBFGS':
+        optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+    else:
+        optimizer = torch.optim.Adam([dummy_data, ], lr=args.lr)
+
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+            milestones=[args.iteration // 2.667, args.iteration // 1.6, args.iteration // 1.142], gamma=0.1)
+
 
     history = []
     history_iters = []
@@ -543,7 +551,13 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
             grad_diff.backward()
             return grad_diff
 
-        current_loss = optimizer.step(closure)
+        if args.inv_loss == 'l2':
+            current_loss = optimizer.step(closure)
+        else:  # 'sim'
+            current_loss = optimizer.step(gradient_closure2(optimizer, dummy_data, original_dy_dxs,
+                                                        label_preds, nets, args, criterion))
+        if args.optim == 'Adam':
+            scheduler.step()
 
         with torch.no_grad():
             # Project into image space
@@ -555,7 +569,9 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
         train_iters.append(iters)
         # losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
+        if iters % 100 == 0:
+            args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
+            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
 
         if args.earlystop > 0:
