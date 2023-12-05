@@ -25,14 +25,14 @@ class Arguments:
         self.earlystop = 1e-9
         self.save_final_img = False
         self.num_dummy = 1 # batch size
-        self.iteration = 5
+        self.iteration = 300
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
         self.methods = ['mDLG_mt']
         self.diff_task_agg = 'game' # 'single', 'random', 'game'
         self.num_servers = 2
         self.int_time = int(time.time())
-        self.log_interval = 1
+        self.log_interval = 6
         self.tv = 1e-2
         self.eval_metrics = ['mse', 'lpips',  'psnr', 'ssim'] # ['mse', 'lpips', 'psnr', 'ssim']
 
