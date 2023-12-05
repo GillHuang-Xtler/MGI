@@ -63,7 +63,9 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
         losses.append(current_loss)
 
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
+        if iters % 100 == 0:
+            args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
+            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
         results.append(result)
 
         if args.earlystop > 0:
@@ -136,7 +138,9 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
         train_iters.append(iters)
         losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
+        if iters % 100 == 0:
+            args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
+            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
         results.append(result)
 
         if args.earlystop > 0:
@@ -156,7 +160,7 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     return imidx_list, final_iter, final_img, results
 
 
-def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
+def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
@@ -185,7 +189,7 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
     optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= args.lr)
     history = []
     history_iters = []
-    losses = []
+
     train_iters = []
     results = []
     for iters in range(Iteration):
@@ -200,12 +204,15 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
                 grad_diff += ((gx - gy) ** 2).sum()
             grad_diff.backward()
             return grad_diff
-        optimizer.step(closure)
-        current_loss = closure().item()
+        current_loss = optimizer.step(closure)
+
         train_iters.append(iters)
-        losses.append(current_loss)
+
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
+
+        if iters % 100 == 0:
+            args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
+            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
 
         if args.earlystop > 0:
@@ -217,13 +224,8 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
         # save the training image
         if iters % int(Iteration / args.log_interval) == 0:
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
-                     str_time)
+                     str_time, mean_std)
 
-        # save the final image
-        if args.save_final_img:
-            save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
-
-    # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
 
     return imidx_list, final_iter, final_img, results
