@@ -155,6 +155,8 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
                 nets.append(net)
         print("num nets" + str(len(nets)))
 
+    for net in nets:
+        net.eval()
 
     return nets
 
