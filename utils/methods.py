@@ -372,7 +372,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
 
     history = []
     history_iters = []
-    losses = []
+    # losses = []
     train_iters = []
     results = []
     args.logger.info('lr = #{}', args.lr)
@@ -396,12 +396,14 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
             grad_diff.backward()
             return grad_diff
 
-        optimizer.step(closure)
-        current_loss = closure().item()
+        current_loss = optimizer.step(closure)
+        # current_loss = closure().item()
         train_iters.append(iters)
-        losses.append(current_loss)
+        # losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
+        if iters % 100 == 0:
+            args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
+            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
 
         if args.earlystop > 0:

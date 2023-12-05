@@ -29,7 +29,7 @@ def LPIPS(dummy_data, gt_data):
     '''
     LPIPS metric
     '''
-    loss_fn_alex = lpips.LPIPS(net='alex')  # best forward scores
+    loss_fn_alex = lpips.LPIPS(net='alex').cuda()  # best forward scores
     return loss_fn_alex(dummy_data, gt_data)
 
 

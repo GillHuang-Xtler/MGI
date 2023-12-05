@@ -12,7 +12,7 @@ class Arguments:
 
     def __init__(self, logger):
         self.logger = logger
-        self.debugOrRun = 'debug_results' # 'debug_results', 'results'
+        self.debugOrRun = 'new_debug_results' # 'debug_results', 'results', 'new_debug_results'
         self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
         self.set_imidx = 12345 # int or 000000
         self.net = 'lenet' # 'lenet', 'fc2', 'resnet'
@@ -28,13 +28,13 @@ class Arguments:
         self.iteration = 300
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
-        self.methods = ['mDLG_mt']
+        self.methods = ['mDLG']
         self.diff_task_agg = 'game' # 'single', 'random', 'game'
         self.num_servers = 2
         self.int_time = int(time.time())
         self.log_interval = 6
         self.tv = 1e-2
-        self.eval_metrics = ['mse', 'lpips',  'psnr', 'ssim'] # ['mse', 'lpips', 'psnr', 'ssim']
+        self.eval_metrics = ['mse'] # ['mse', 'lpips', 'psnr', 'ssim']
 
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"

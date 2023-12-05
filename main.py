@@ -41,7 +41,7 @@ def main():
     dataset = args.get_dataset()
     root_path = args.get_root_path()
     data_path = os.path.join(root_path, 'data').replace('\\', '/')
-    save_path = os.path.join(root_path, 'debug_results/compare_%s' % dataset).replace('\\', '/')
+    save_path = os.path.join(root_path, args.get_debugOrRun()+'/compare_%s' % dataset).replace('\\', '/')
     # eval_res_path = os.path.join(root_path, '/compare_%s' % dataset).replace('\\', '/')
     lr = args.get_lr()
     num_dummy = args.get_num_dummy()
