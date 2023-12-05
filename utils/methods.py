@@ -12,7 +12,7 @@ from utils.save import save_img, early_stop, save_final_img, save_eval
 from .method_utils import gradient_closure, gradient_closure2
 
 
-def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
+def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
@@ -73,12 +73,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, It
 
         # save the training image
         if iters % int(Iteration / args.log_interval) == 0:
-            save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list, str_time)
-
-        # save the final image
-        if args.save_final_img:
-            save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
-
+            save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list, str_time, mean_std)
 
     # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")

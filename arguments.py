@@ -23,21 +23,21 @@ class Arguments:
 
         self.inv_loss = 'sim'  # 'l2', 'sim'
 
-        self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
-        self.optim = 'Adam' # 'Adam', 'LBFGS'
-        self.iteration = 10000
+        # self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
+        # self.optim = 'Adam' # 'Adam', 'LBFGS'
+        # self.iteration = 10000
 
-        # self.lr = 1  # 0.1 for Adam, 1 for LBFGS
-        # self.optim = 'LBFGS'  # 'Adam', 'LBFGS'
-        # self.iteration = 300
+        self.lr = 1  # 0.1 for Adam, 1 for LBFGS
+        self.optim = 'LBFGS'  # 'Adam', 'LBFGS'
+        self.iteration = 300
 
         self.use_game = True
         self.earlystop = 1e-9
         self.save_final_img = False
         self.num_dummy = 1 # batch size
         self.num_exp = 1
-        # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
-        self.methods = ['mDLG']
+        # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG']
+        self.methods = ['DLG']
         self.diff_task_agg = 'game' # 'single', 'random', 'game'
         self.num_servers = 2
         self.int_time = int(time.time())
