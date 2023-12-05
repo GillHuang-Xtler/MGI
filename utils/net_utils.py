@@ -109,14 +109,26 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
                 net = LeNet(channel=channel, hidden=hidden, num_classes= class_list[i])
                 net.apply(weights_init)
                 nets.append(net)
-
+        elif args.get_dataset() == 'stl10':
+            from utils.resnet.ResNet import resnet20_4
+            args.logger.info('running same structure multiserver mnist')
+            class_list = [num_classes, alter_num_classes]
+            for i in range(args.num_servers):
+                net = resnet20_4(num_classes=class_list[i])
+                nets.append(net)
         elif args.get_dataset() == 'cifar100':
             args.logger.info('running same structure multiserver cifar100')
             class_list  = [num_classes, alter_num_classes, 10, 5, 2]
-            for i in range(args.num_servers):
-                net = LeNet(channel=channel, hidden=hidden, num_classes= class_list[i])
-                net.apply(weights_init)
-                nets.append(net)
+            if args.net == 'lenet':
+                for i in range(args.num_servers):
+                    net = LeNet(channel=channel, hidden=hidden, num_classes= class_list[i])
+                    net.apply(weights_init)
+                    nets.append(net)
+            else: # 'resnet20-4'
+                from utils.resnet.ResNet import resnet20_4
+                for i in range(args.num_servers):
+                    net = resnet20_4(num_classes=class_list[i])
+                    nets.append(net)
 
         elif args.get_dataset() == 'lfw':
             args.logger.info('running same structure multiserver lfw')

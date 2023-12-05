@@ -121,6 +121,15 @@ def label_mapping(origin_label, idx):
                             1: [ 23, 33, 49, 60, 71, 15, 19, 21, 31, 38, 34, 63, 64, 66, 75, 26, 45, 77, 79, 99, 2, 11, 35, 46, 98, 27, 29, 44, 78, 93, 36, 50, 65, 74, 80,47, 52, 56, 59, 96 , 8, 13, 48, 58, 90, 41, 69, 81, 85, 89],}
 
         tmp_label_1 = torch.Tensor([k for k, v in mapping_dict.items() if origin_label in v]).long()
+
+    elif args.get_dataset() == 'stl10':
+        mapping_dict = {0: [0, 2, 8, 9],
+                        1: [1, 3, 4, 5, 6, 7],}
+
+        tmp_label_1 = torch.Tensor([k for k, v in mapping_dict.items() if origin_label in v]).long()
+
+
+
     elif args.get_dataset() == 'lfw':
         mapping_dict = get_lfw_gender_mapping('./data/lfw')
         # print(mapping_dict)

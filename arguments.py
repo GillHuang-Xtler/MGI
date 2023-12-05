@@ -38,7 +38,7 @@ class Arguments:
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG']
         self.methods = ['mDLG_mt']
-        self.diff_task_agg = 'game' # 'single', 'random', 'game'
+        self.diff_task_agg = 'random' # 'single', 'random', 'game'
         self.num_servers = 2
         self.int_time = int(time.time())
         self.log_interval = 6
