@@ -13,17 +13,23 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
         self.debugOrRun = 'new_debug_results' # 'debug_results', 'results', 'new_debug_results'
-        self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
-        self.set_imidx = 12345 # int or 000000
+        self.dataset = 'cifar10' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
+        self.set_imidx = 100 # int or 000000
         self.net = 'lenet' # 'lenet', 'fc2', 'resnet'
         self.net_mt_diff = True
         self.batch_size = 1
         self.model_path = './model'
         self.root_path = '.'
 
+        self.inv_loss = 'l2'  # 'l2', 'sim'
+
         self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
         self.optim = 'Adam' # 'Adam', 'LBFGS'
-        self.iteration = 2000
+        self.iteration = 10000
+
+        # self.lr = 1  # 0.1 for Adam, 1 for LBFGS
+        # self.optim = 'LBFGS'  # 'Adam', 'LBFGS'
+        # self.iteration = 300
 
         self.use_game = True
         self.earlystop = 1e-9

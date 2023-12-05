@@ -9,6 +9,8 @@ from utils.data_processing import total_variation
 from torchmetrics.image import TotalVariation
 from utils.save import save_img, early_stop, save_final_img, save_eval
 
+from .method_utils import gradient_closure, gradient_closure2
+
 
 def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
@@ -411,7 +413,11 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
             grad_diff.backward()
             return grad_diff
 
-        current_loss = optimizer.step(closure)
+        if args.inv_loss == 'l2':
+            current_loss = optimizer.step(closure)
+        else:  # 'sim'
+            current_loss = optimizer.step(gradient_closure2(optimizer, dummy_data, original_dy_dxs,
+                                                        label_preds, nets, args, criterion))
         if args.optim == 'Adam':
             scheduler.step()
 

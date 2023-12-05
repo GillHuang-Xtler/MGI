@@ -64,6 +64,21 @@ def load_data(dataset, root_path, data_path, save_path):
             transforms.ToTensor(),
             transforms.Normalize(d_mean, d_std)])
 
+    elif dataset == 'cifar10':
+        shape_img = (32, 32)
+        input_size = 32
+        num_classes = 10
+        alter_num_classes = 20
+        channel = 3
+        hidden = 768
+        dst = datasets.CIFAR10(data_path, download=True)
+
+        d_mean = [0.4914672374725342, 0.4822617471218109, 0.4467701315879822]
+        d_std = [0.24703224003314972, 0.24348513782024384, 0.26158785820007324]
+        tt = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(d_mean, d_std)])
+
     elif dataset == 'stl10':
         shape_img = (96,96)
         input_size = 96

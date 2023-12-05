@@ -84,6 +84,21 @@ def init_params(net):
                 init.constant_(m.bias, 0)
 
 def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes, input_size):
+    SEED = 42
+
+    def set_random_seed(seed=233):
+        import random
+        import numpy as np
+        """233 = 144 + 89 is my favorite number."""
+        torch.manual_seed(seed + 1)
+        torch.cuda.manual_seed(seed + 2)
+        torch.cuda.manual_seed_all(seed + 3)
+        np.random.seed(seed + 4)
+        torch.cuda.manual_seed_all(seed + 5)
+        random.seed(seed + 6)
+
+    set_random_seed(SEED)
+
     nets = []
     if method == 'mDLG_mt':
         args.logger.info('running different task multi server')
