@@ -15,13 +15,13 @@ class Arguments:
         self.debugOrRun = 'new_debug_results' # 'debug_results', 'results', 'new_debug_results'
         self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
         self.set_imidx = 100 # int or 000000
-        self.net = 'lenet' # 'lenet', 'fc2', 'resnet'
+        self.net = 'resnet20-4' # 'lenet', 'fc2', 'resnet', 'resnet20-4'
         self.net_mt_diff = True
         self.batch_size = 1
         self.model_path = './model'
         self.root_path = '.'
 
-        self.inv_loss = 'l2'  # 'l2', 'sim'
+        self.inv_loss = 'sim'  # 'l2', 'sim'
 
         self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
         self.optim = 'Adam' # 'Adam', 'LBFGS'

@@ -152,9 +152,14 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
                 net = FC2(channel=channel, input_size=input_size, hidden=500, num_classes=num_classes)
                 net.apply(weights_init)
                 nets.append(net)
+        elif args.get_net() == 'resnet20-4':
+            from utils.resnet.ResNet import resnet20_4
+            for i in range(num_servers):
+                net = resnet20_4(num_classes=num_classes)
+                nets.append(net)
 
     else:
-        args.logger.info('running simgle server')
+        args.logger.info('running single server')
         for i in range(args.num_servers):
             if args.get_net() == 'lenet':
                 net = LeNet(channel=channel, hidden=hidden, num_classes=num_classes)
@@ -167,6 +172,10 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
             elif args.get_net() == 'resnet':
                 net = Cifar100ResNet(num_classes = num_classes)
                 net.apply(weights_init)
+                nets.append(net)
+            elif args.get_net() == 'resnet20-4':
+                from utils.resnet.ResNet import resnet20_4
+                net = resnet20_4(num_classes=num_classes)
                 nets.append(net)
         print("num nets" + str(len(nets)))
 
