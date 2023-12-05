@@ -23,13 +23,13 @@ class Arguments:
 
         self.inv_loss = 'sim'  # 'l2', 'sim'
 
-        # self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
-        # self.optim = 'Adam' # 'Adam', 'LBFGS'
+        self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
+        self.optim = 'Adam' # 'Adam', 'LBFGS'
 
-        self.lr = 1  # 0.1 for Adam, 1 for LBFGS
-        self.optim = 'LBFGS'  # 'Adam', 'LBFGS'
+        # self.lr = 1  # 0.1 for Adam, 1 for LBFGS
+        # self.optim = 'LBFGS'  # 'Adam', 'LBFGS'
 
-        self.iteration = 300
+        self.iteration = 10000
 
         self.use_game = True
         self.earlystop = 1e-9
