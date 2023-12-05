@@ -10,11 +10,12 @@ from torchmetrics.image import TotalVariation
 from utils.save import save_img, early_stop, save_final_img, save_eval
 
 
-def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path, str_time):
+def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
     final_iter = Iteration - 1
+    net = nets[0]
 
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
@@ -34,6 +35,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
     dy_dx = torch.autograd.grad(y, net.parameters())
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
+    # print(dummy_data.size())
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr= args.lr)
     history = []
@@ -76,17 +78,19 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Ite
             save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
 
 
-    label = torch.argmax(dummy_label, dim=-1).detach().item()
+    # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
 
     return imidx_list, final_iter, final_img, results
 
 
-def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path, str_time):
+def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
     final_iter = Iteration - 1
+    net = nets[0]
+
 
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
@@ -106,7 +110,8 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     dy_dx = torch.autograd.grad(y, net.parameters())
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
-    dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
+    # do not reconstruct label
+    # dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, ], lr=args.lr)
 
     # predict the ground-truth label
@@ -119,7 +124,6 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
-        result = []
         def closure():
             optimizer.zero_grad()
             pred = net(dummy_data)
@@ -153,18 +157,18 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
         if args.save_final_img:
             save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
 
-    label = torch.argmax(dummy_label, dim=-1).detach().item()
+    # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
 
     return imidx_list, final_iter, final_img, results
 
 
-def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path, str_time):
+def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
     final_iter = Iteration - 1
-    lr = 0.1
+    net = nets[0]
 
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
@@ -185,15 +189,13 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
-    optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= lr)
+    optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= args.lr)
     history = []
     history_iters = []
     losses = []
     train_iters = []
     results = []
-    args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
-        result = []
 
         def closure():
             optimizer.zero_grad()
@@ -228,19 +230,18 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes,
         if args.save_final_img:
             save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
 
-    label = torch.argmax(dummy_label, dim=-1).detach().item()
+    # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
 
     return imidx_list, final_iter, final_img, results
 
 
-def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, Iteration, save_path, str_time):
+def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
     final_iter = Iteration - 1
-    lr = 1
-    tv = TotalVariation()
+    net = nets[0]
 
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
@@ -262,7 +263,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
-    optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr= lr)
+    optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= args.lr)
     history = []
     history_iters = []
     losses = []
@@ -270,7 +271,6 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
     results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
-        result = []
 
         def closure():
             optimizer.zero_grad()
@@ -307,7 +307,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, net, num_classes, It
         if args.save_final_img:
             save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
 
-    label = torch.argmax(dummy_label, dim=-1).detach().item()
+    # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
     return imidx_list, final_iter, final_img, results
 
@@ -319,14 +319,19 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
     final_iter = Iteration - 1
 
     for imidx in range(num_dummy):
+
+        # get random idx or
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
 
         tmp_datum = tt(dst[idx][0]).float().to(device)
         tmp_datum = tmp_datum.view(1, *tmp_datum.size())
         tmp_label = torch.Tensor([dst[idx][1]]).long().to(device)
         tmp_label = tmp_label.view(1, )
-        dummy_data = tt(dst[999][0]).float().to(device)
-        dummy_data = dummy_data.view(1, *dummy_data.size())
+
+        # use a random data as initialization
+        # dummy_data = tt(dst[999][0]).float().to(device)
+        # dummy_data = dummy_data.view(1, *dummy_data.size())
+
         if imidx == 0:
             gt_data = tmp_datum
             gt_label = tmp_label
@@ -337,7 +342,8 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
     # compute original gradient
 
     original_dy_dxs = []
-    label_preds = []
+    _label_preds = []
+
     for i in range(args.num_servers):
         out = nets[i](gt_data)
         y = criterion(out, gt_label)
@@ -346,17 +352,23 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
         original_dy_dxs.append(original_dy_dx)
 
         # predict the ground-truth label
-        label_preds.append(torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape((1,)).requires_grad_(False))
+        _label_preds.append(torch.argmin(torch.sum(original_dy_dx[-2], dim=-1) , dim=-1).detach().reshape((1,)).requires_grad_(False))
+
+    label_preds = []
+    for i in _label_preds:
+        j = i.repeat(args.num_dummy)
+        label_preds.append(j)
 
     # initialize random image
-
-    # dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
+    dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     # dummy_data = torch.rand(gt_data.size()).to(device).requires_grad_(True)
     # dummy_data = torch.randint(255, gt_data.size()).float().to(device)
 
-
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
-    optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+    if args.num_dummy > 1:
+        optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr = args.lr)
+    else:
+        optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
 
     history = []
     history_iters = []
@@ -365,16 +377,16 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
     results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
-        result = []
-
         def closure():
             optimizer.zero_grad()
-
             # new
             dummy_dy_dxs = []
             for i in range(args.num_servers):
-                pred = (nets[i](dummy_data))
-                dummy_loss = criterion(pred, label_preds[i])
+                pred = nets[i](dummy_data)
+                if args.num_dummy > 1:
+                    dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=1))
+                else:
+                    dummy_loss = criterion(pred, label_preds[i])
                 dummy_dy_dxs.append(torch.autograd.grad(dummy_loss, nets[i].parameters(), create_graph=True))
 
             grad_diff = 0
@@ -407,7 +419,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
         if args.save_final_img:
             save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
 
-    label = torch.argmax(dummy_label, dim=-1).detach().item()
+    # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
 
     return imidx_list, final_iter, final_img, results
@@ -468,7 +480,6 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
     results = []
     args.logger.info('lr = #{}', args.lr)
     for iters in range(Iteration):
-        result = []
 
         def closure():
             optimizer.zero_grad()
@@ -476,7 +487,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes
             # _ = torch.randint(1, (1,))[0]
             _ = torch.rand(1)
             random_alpha = torch.FloatTensor([_, 1 - _])
-            random_alpha = [0.4, 0.3, 0.3]
+            # random_alpha = [0.4, 0.3, 0.3]
 
             # new
             dummy_dy_dxs = []
