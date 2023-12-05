@@ -42,7 +42,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
     optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr= args.lr)
     history = []
     history_iters = []
-    losses = []
+    # losses = []
     train_iters = []
     results = []
     args.logger.info('lr = #{}', args.lr)
@@ -57,15 +57,14 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
                 grad_diff += ((gx - gy) ** 2).sum()
             grad_diff.backward()
             return grad_diff
-        optimizer.step(closure)
-        current_loss = closure().item()
+        current_loss = optimizer.step(closure)
         train_iters.append(iters)
-        losses.append(current_loss)
+        # losses.append(current_loss)
 
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
         if iters % 100 == 0:
             args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
-            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
+            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
 
         if args.earlystop > 0:
@@ -118,7 +117,7 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
         (1,)).requires_grad_(False)
     history = []
     history_iters = []
-    losses = []
+    # losses = []
     train_iters = []
     results = []
     args.logger.info('lr = #{}', args.lr)
@@ -133,14 +132,13 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
                 grad_diff += ((gx - gy) ** 2).sum()
             grad_diff.backward()
             return grad_diff
-        optimizer.step(closure)
-        current_loss = closure().item()
+        current_loss = optimizer.step(closure)
         train_iters.append(iters)
-        losses.append(current_loss)
+        # losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
         if iters % 100 == 0:
             args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
-            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
+            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
 
         if args.earlystop > 0:
@@ -231,7 +229,7 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
     return imidx_list, final_iter, final_img, results
 
 
-def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, Iteration, save_path, str_time):
+def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_classes, Iteration, save_path, str_time):
     criterion = nn.CrossEntropyLoss().to(device)
     imidx_list = []
     final_img = []
@@ -261,7 +259,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
     optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= args.lr)
     history = []
     history_iters = []
-    losses = []
+    # losses = []
     train_iters = []
     results = []
     args.logger.info('lr = #{}', args.lr)
@@ -279,12 +277,13 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
             grad_diff += args.tv * total_variation(dummy_data)
             grad_diff.backward()
             return grad_diff
-        optimizer.step(closure)
-        current_loss = closure().item()
+        current_loss = optimizer.step(closure)
         train_iters.append(iters)
-        losses.append(current_loss)
+        # losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', losses[-1], result[0], result[1], result[2], result[3])
+        if iters % 100 == 0:
+            args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
+            args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
         #
         if args.earlystop > 0:
@@ -296,11 +295,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
         # save the training image
         if iters % int(Iteration / args.log_interval) == 0:
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
-                     str_time)
-
-        # save the final image
-        if args.save_final_img:
-            save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
+                     str_time, mean_std)
 
     # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")

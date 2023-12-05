@@ -37,7 +37,7 @@ class Arguments:
         self.num_dummy = 1 # batch size
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG']
-        self.methods = ['DLGAdam']
+        self.methods = ['InvG']
         self.diff_task_agg = 'game' # 'single', 'random', 'game'
         self.num_servers = 2
         self.int_time = int(time.time())
