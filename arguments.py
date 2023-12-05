@@ -20,12 +20,15 @@ class Arguments:
         self.batch_size = 1
         self.model_path = './model'
         self.root_path = '.'
-        self.lr = 1
+
+        self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
+        self.optim = 'Adam' # 'Adam', 'LBFGS'
+        self.iteration = 2000
+
         self.use_game = True
         self.earlystop = 1e-9
         self.save_final_img = False
         self.num_dummy = 1 # batch size
-        self.iteration = 100
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
         self.methods = ['mDLG']
@@ -35,7 +38,6 @@ class Arguments:
         self.log_interval = 6
         self.tv = 1e-2
         self.eval_metrics = ['mse'] # ['mse', 'lpips', 'psnr', 'ssim']
-
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
         self.test_data_loader_pickle_path = "data_loaders/cifar100/test_data_loader.pickle"

@@ -373,9 +373,18 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
 
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     if args.num_dummy > 1:
-        optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr = args.lr)
+        if args.optim == 'LBFGS':
+            optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr = args.lr)
+        else:
+            optimizer = optimizer = torch.optim.Adam([dummy_data, dummy_label], lr=args.lr)
     else:
-        optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+        if args.optim == 'LBFGS':
+            optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+        else:
+            optimizer = optimizer = torch.optim.Adam([dummy_data, ], lr=args.lr)
+
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+            milestones=[args.iteration // 2.667, args.iteration // 1.6, args.iteration // 1.142], gamma=0.1)
 
     history = []
     history_iters = []
@@ -403,6 +412,9 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
             return grad_diff
 
         current_loss = optimizer.step(closure)
+        if args.optim == 'Adam':
+            scheduler.step()
+
         with torch.no_grad():
             # Project into image space
             dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
