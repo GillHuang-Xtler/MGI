@@ -372,7 +372,6 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
 
     history = []
     history_iters = []
-    # losses = []
     train_iters = []
     results = []
     args.logger.info('lr = #{}', args.lr)
@@ -397,9 +396,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
             return grad_diff
 
         current_loss = optimizer.step(closure)
-        # current_loss = closure().item()
         train_iters.append(iters)
-        # losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
         if iters % 100 == 0:
             args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
@@ -417,11 +414,6 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, nets, num_classes, I
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
                      str_time)
 
-        # save the final image
-        if args.save_final_img:
-            save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
-
-    # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
 
     return imidx_list, final_iter, final_img, results

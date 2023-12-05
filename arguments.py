@@ -25,7 +25,7 @@ class Arguments:
         self.earlystop = 1e-9
         self.save_final_img = False
         self.num_dummy = 1 # batch size
-        self.iteration = 300
+        self.iteration = 100
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG', 'CPA']
         self.methods = ['mDLG']
