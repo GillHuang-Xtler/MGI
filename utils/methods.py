@@ -308,10 +308,6 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     final_img = []
     final_iter = Iteration - 1
 
-    d_mean, d_std = mean_std
-    dm = torch.as_tensor(d_mean, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
-    ds = torch.as_tensor(d_std, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
-
     for imidx in range(num_dummy):
 
         # get random idx or
@@ -334,6 +330,16 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
             gt_label = torch.cat((gt_label, tmp_label), dim=0)
 
     # compute original gradient
+
+    print("gt_data.shape!!!!!!!!!!:", gt_data.shape, gt_data[0][0].shape)
+    daaa = [gt_data[0][0].mean().item(), gt_data[0][1].mean().item(), gt_data[0][2].mean().item()]
+    dbbb = [gt_data[0][0].std().item(), gt_data[0][1].std().item(), gt_data[0][2].std().item()]
+    print(daaa, dbbb)
+
+    d_mean, d_std = mean_std
+    # d_mean, d_std = daaa, dbbb
+    dm = torch.as_tensor(d_mean, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
+    ds = torch.as_tensor(d_std, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
 
     original_dy_dxs = []
     _label_preds = []
@@ -406,7 +412,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
         else:  # 'sim'
             current_loss = optimizer.step(gradient_closure2(optimizer, dummy_data, original_dy_dxs,
                                                         label_preds, nets, args, criterion))
-        if args.optim == 'Adam':
+        if args.scheduler:
             scheduler.step()
 
         with torch.no_grad():
@@ -474,6 +480,11 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
             for i in range(len(args.num_servers)):
                 gt_labels.append(torch.cat((gt_labels[i], tmp_labels[i]), dim=0))
     # compute original gradient
+
+    print("gt_data.shape!!!!!!!!!!:", gt_data.shape, gt_data[0][0].shape)
+    daaa = [gt_data[0][0].mean().item(), gt_data[0][1].mean().item(), gt_data[0][2].mean().item()]
+    dbbb = [gt_data[0][0].std().item(), gt_data[0][1].std().item(), gt_data[0][2].std().item()]
+    print(daaa, dbbb)
 
     original_dy_dxs = []
     label_preds = []
@@ -556,7 +567,7 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
         else:  # 'sim'
             current_loss = optimizer.step(gradient_closure2(optimizer, dummy_data, original_dy_dxs,
                                                         label_preds, nets, args, criterion))
-        if args.optim == 'Adam':
+        if args.scheduler:
             scheduler.step()
 
         with torch.no_grad():
