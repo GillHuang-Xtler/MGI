@@ -13,9 +13,9 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
         self.debugOrRun = 'new_debug_results' # 'debug_results', 'results', 'new_debug_results'
-        self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
+        self.dataset = 'stl10' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
         self.set_imidx = 100 # int or 000000
-        self.net = 'resnet20-4' # 'lenet', 'fc2', 'resnet', 'resnet20-4'
+        self.net = 'resnet34' # 'lenet', 'fc2', 'resnet', 'resnet20-4', 'resnet34'
         self.net_mt_diff = True
         self.batch_size = 1
         self.model_path = './model'

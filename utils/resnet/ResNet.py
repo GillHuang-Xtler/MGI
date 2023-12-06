@@ -346,3 +346,11 @@ class LeNetZhu(nn.Module):
 
 def resnet20_4(num_classes=10):
     return ResNet(torchvision.models.resnet.BasicBlock, [3, 3, 3], num_classes=num_classes, base_width=16 * 4)
+
+
+def resnet34(num_classes=10):
+    return ResNet(torchvision.models.resnet.BasicBlock, [3, 4, 6, 3], num_classes=num_classes, base_width=64)
+
+
+def resnet50(num_classes=10):
+    return ResNet(torchvision.models.resnet.Bottleneck, [3, 4, 6, 3], num_classes=num_classes, base_width=64)

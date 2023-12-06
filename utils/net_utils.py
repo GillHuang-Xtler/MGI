@@ -110,11 +110,14 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
                 net.apply(weights_init)
                 nets.append(net)
         elif args.get_dataset() == 'stl10':
-            from utils.resnet.ResNet import resnet20_4
+            if args.net == 'resnet34':
+                from utils.resnet.ResNet import resnet34 as resnet
+            elif args.net == 'resnet20-4':
+                from utils.resnet.ResNet import resnet20_4 as resnet
             args.logger.info('running same structure multiserver mnist')
             class_list = [num_classes, alter_num_classes]
             for i in range(args.num_servers):
-                net = resnet20_4(num_classes=class_list[i])
+                net = resnet(num_classes=class_list[i])
                 nets.append(net)
         elif args.get_dataset() == 'cifar100':
             args.logger.info('running same structure multiserver cifar100')
@@ -169,7 +172,16 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
             for i in range(num_servers):
                 net = resnet20_4(num_classes=num_classes)
                 nets.append(net)
-
+        elif args.get_net() == 'resnet34':
+            from utils.resnet.ResNet import resnet34
+            for i in range(num_servers):
+                net = resnet34(num_classes=num_classes)
+                nets.append(net)
+        elif args.get_net() == 'resnet50':
+            from utils.resnet.ResNet import resnet50
+            for i in range(num_servers):
+                net = resnet50(num_classes=num_classes)
+                nets.append(net)
     else:
         args.logger.info('running single server')
         for i in range(args.num_servers):
@@ -188,6 +200,14 @@ def intialize_nets(args, method, channel, hidden, num_classes,alter_num_classes,
             elif args.get_net() == 'resnet20-4':
                 from utils.resnet.ResNet import resnet20_4
                 net = resnet20_4(num_classes=num_classes)
+                nets.append(net)
+            elif args.get_net() == 'resnet34':
+                from utils.resnet.ResNet import resnet34
+                net = resnet34(num_classes=num_classes)
+                nets.append(net)
+            elif args.get_net() == 'resnet50':
+                from utils.resnet.ResNet import resnet50
+                net = resnet50(num_classes=num_classes)
                 nets.append(net)
         print("num nets" + str(len(nets)))
 

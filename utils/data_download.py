@@ -88,6 +88,16 @@ def load_data(dataset, root_path, data_path, save_path):
         hidden = 6912
         dst = datasets.STL10(data_path, download=True)
 
+        # d_mean = [0.4914, 0.4822, 0.4465]
+        # d_std = [0.2023, 0.1994, 0.2010]
+
+        # d_mean = [0.485, 0.456, 0.406]
+        # d_std = [0.229, 0.224, 0.225]
+
+        tt = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(d_mean, d_std)])
+
     elif dataset == 'lfw':
         shape_img = (32, 32)
         input_size = 32
