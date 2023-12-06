@@ -79,7 +79,7 @@ def save_results(results, filename):
     :param filename: File name to write results to
     :type filename: String
     """
-    dirname = 'new_debug_results/eval_res'
+    dirname = 'new_results/eval_res'
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     with open(os.path.join(dirname,filename), 'w', newline='') as csvfile:

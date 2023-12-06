@@ -40,6 +40,10 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
     # print(dummy_data.size())
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr= args.lr)
+
+    # dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(False)
+    # optimizer = torch.optim.LBFGS([dummy_data], lr=args.lr)
+
     history = []
     history_iters = []
     # losses = []
@@ -50,7 +54,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
         def closure():
             optimizer.zero_grad()
             pred = net(dummy_data)
-            dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
+            dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)+1e-8), dim=-1))
             dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
             grad_diff = 0
             for gx, gy in zip(dummy_dy_dx, original_dy_dx):
@@ -58,6 +62,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
             grad_diff.backward()
             return grad_diff
         current_loss = optimizer.step(closure)
+
         train_iters.append(iters)
         # losses.append(current_loss)
 
@@ -236,6 +241,10 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     final_iter = Iteration - 1
     net = nets[0]
 
+    d_mean, d_std = mean_std
+    dm = torch.as_tensor(d_mean, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
+    ds = torch.as_tensor(d_std, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
+
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
 
@@ -256,6 +265,10 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
+
+    with torch.no_grad():
+        dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+
     optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= args.lr)
     history = []
     history_iters = []
@@ -278,6 +291,15 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
             grad_diff.backward()
             return grad_diff
         current_loss = optimizer.step(closure)
+
+        with torch.no_grad():
+            # Project into image space
+            dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+            # dummy_data.data = torch.max(torch.min(dummy_data, dm + ds), dm - ds)
+
+            if (iters + 1 == args.iteration) or iters % 500 == 0:
+                print(f'It: {iters}. Rec. loss: {current_loss.item():2.4f}.')
+
         train_iters.append(iters)
         # losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
@@ -341,6 +363,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     dm = torch.as_tensor(d_mean, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
     ds = torch.as_tensor(d_std, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
 
+
     original_dy_dxs = []
     _label_preds = []
 
@@ -366,6 +389,9 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
 
     with torch.no_grad():
         dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+        # dummy_data.data = torch.max(torch.min(dummy_data, dm+ds), dm-ds)
+
+    print(dm.shape, ds.shape, dummy_data.shape)
 
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     if args.num_dummy > 1:
@@ -379,8 +405,10 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
         else:
             optimizer = torch.optim.Adam([dummy_data, ], lr=args.lr)
 
+    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+    #         milestones=[args.iteration // 2.667, args.iteration // 1.6, args.iteration // 1.142], gamma=0.1)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-            milestones=[args.iteration // 2.667, args.iteration // 1.6, args.iteration // 1.142], gamma=0.1)
+                                                     milestones=[args.iteration // 2.0], gamma=0.1)
 
     history = []
     history_iters = []
@@ -418,6 +446,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
         with torch.no_grad():
             # Project into image space
             dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+            # dummy_data.data = torch.max(torch.min(dummy_data, dm + ds), dm - ds)
 
             if (iters + 1 == args.iteration) or iters % 500 == 0:
                 print(f'It: {iters}. Rec. loss: {current_loss.item():2.4f}.')
@@ -510,8 +539,11 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
     else:
         optimizer = torch.optim.Adam([dummy_data, ], lr=args.lr)
 
+    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+    #         milestones=[args.iteration // 2.667, args.iteration // 1.6, args.iteration // 1.142], gamma=0.1)
+
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-            milestones=[args.iteration // 2.667, args.iteration // 1.6, args.iteration // 1.142], gamma=0.1)
+                                                     milestones=[args.iteration // 2.0], gamma=0.1)
 
 
     history = []
@@ -524,7 +556,8 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
 
         def closure():
             optimizer.zero_grad()
-            single_alpha = torch.FloatTensor([0,1])
+            # single_alpha = torch.FloatTensor([0,1])
+            single_alpha = torch.FloatTensor([1, 0])
             # _ = torch.randint(1, (1,))[0]
             _ = torch.rand(1)
             random_alpha = torch.FloatTensor([_, 1 - _])
