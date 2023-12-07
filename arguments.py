@@ -13,9 +13,9 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
         self.debugOrRun = 'new_results' # 'debug_results', 'results', 'new_debug_results'
-        self.dataset = 'stl10' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
-        self.set_imidx = 100 # int or 000000
-        self.net = 'resnet34' # 'lenet', 'fc2', 'resnet', 'resnet20-4', 'resnet34'
+        self.dataset = 'cifar100' # 'cifar100', 'lfw', 'mnist', 'celebA', 'stl10'
+        self.set_imidx = 35 # int or 000000
+        self.net = 'resnet20-4' # 'lenet', 'fc2', 'resnet', 'resnet20-4', 'resnet34'
         self.net_mt_diff = True
         self.batch_size = 1
         self.model_path = './model'
@@ -23,14 +23,16 @@ class Arguments:
 
         self.inv_loss = 'sim'  # 'l2', 'sim'
 
-        self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
-        self.optim = 'Adam' # 'Adam', 'LBFGS'
+        # self.lr = 0.1 # 0.1 for Adam, 1 for LBFGS
+        # self.optim = 'Adam' # 'Adam', 'LBFGS'
 
-        # self.lr = 1  # 0.1 for Adam, 1 for LBFGS
-        # self.optim = 'LBFGS'  # 'Adam', 'LBFGS'
+        self.lr = 1  # 0.1 for Adam, 1 for LBFGS
+        self.optim = 'LBFGS'  # 'Adam', 'LBFGS'
 
-        self.iteration = 1001
-        self.scheduler = True
+        # self.iteration = 501
+        self.iteration = 51
+        # self.scheduler = True
+        self.scheduler = False
 
         self.use_game = True
         self.earlystop = 1e-9
@@ -38,13 +40,13 @@ class Arguments:
         self.num_dummy = 1 # batch size
         self.num_exp = 1
         # self.methods = ['DLG', 'iDLG', 'mDLG', 'mDLG_mt', 'DLGAdam', 'InvG']
-        self.methods = ['mDLG_mt']
+        self.methods = ['iDLG']
         self.diff_task_agg = 'single' # 'single', 'random', 'game'
         self.num_servers = 2
         self.int_time = int(time.time())
-        self.log_interval = 5
+        self.log_interval = 1
         self.tv = 1e-2
-        self.eval_metrics = ['mse', 'lpips', 'psnr', 'ssim'] # ['mse', 'lpips', 'psnr', 'ssim']
+        self.eval_metrics = ['mse'] # ['mse', 'lpips', 'psnr', 'ssim']
 
         self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
         self.test_data_loader_pickle_path = "data_loaders/cifar100/test_data_loader.pickle"

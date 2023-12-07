@@ -19,6 +19,10 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
     final_iter = Iteration - 1
     net = nets[0]
 
+    d_mean, d_std = mean_std
+    dm = torch.as_tensor(d_mean, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
+    ds = torch.as_tensor(d_std, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
+
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
         tmp_datum = tt(dst[idx][0]).float().to(device)
@@ -38,11 +42,19 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     # print(dummy_data.size())
+
+    # with torch.no_grad():
+    #     dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr= args.lr)
 
     # dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(False)
     # optimizer = torch.optim.LBFGS([dummy_data], lr=args.lr)
+
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                     milestones=[args.iteration // 12.0, args.iteration // 2.0],
+                                                     gamma=0.0001)
 
     history = []
     history_iters = []
@@ -54,7 +66,7 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
         def closure():
             optimizer.zero_grad()
             pred = net(dummy_data)
-            dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)+1e-8), dim=-1))
+            dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)+1e-10), dim=-1))
             dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
             grad_diff = 0
             for gx, gy in zip(dummy_dy_dx, original_dy_dx):
@@ -63,11 +75,19 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
             return grad_diff
         current_loss = optimizer.step(closure)
 
+        with torch.no_grad():
+            # Project into image space
+            # dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+
+            if (iters + 1 == args.iteration) or iters % 500 == 0:
+                print(f'It: {iters}. Rec. loss: {current_loss.item():2.4f}.')
+
         train_iters.append(iters)
         # losses.append(current_loss)
+        # scheduler.step()
 
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        if iters % 100 == 0:
+        if iters % 10 == 0:
             args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
             args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
@@ -78,8 +98,10 @@ def dlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_c
                 break
 
         # save the training image
-        if iters % int(Iteration / args.log_interval) == 0:
+        if iters % int(Iteration / args.log_interval) == 0 or (args.log_interval == 1 and iters == Iteration-1):
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list, str_time, mean_std)
+
+        # save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
 
     # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
@@ -94,6 +116,9 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     final_iter = Iteration - 1
     net = nets[0]
 
+    d_mean, d_std = mean_std
+    dm = torch.as_tensor(d_mean, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
+    ds = torch.as_tensor(d_std, dtype=next(nets[0].parameters()).dtype)[:, None, None].cuda()
 
     for imidx in range(num_dummy):
         idx, imidx_list = set_idx(imidx, imidx_list, idx_shuffle)
@@ -113,9 +138,16 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     dy_dx = torch.autograd.grad(y, net.parameters())
     original_dy_dx = list((_.detach().clone() for _ in dy_dx))
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
+
+    # with torch.no_grad():
+    #     dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
     # do not reconstruct label
     # dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
     optimizer = torch.optim.LBFGS([dummy_data, ], lr=args.lr)
+
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                     milestones=[args.iteration // 12.0, args.iteration // 2.0],
+                                                     gamma=0.0001)
 
     # predict the ground-truth label
     label_pred = torch.argmin(torch.sum(original_dy_dx[-2], dim=-1), dim=-1).detach().reshape(
@@ -138,10 +170,20 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
             grad_diff.backward()
             return grad_diff
         current_loss = optimizer.step(closure)
+
+        # scheduler.step()
+
+        with torch.no_grad():
+            # Project into image space
+            # dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+
+            if (iters + 1 == args.iteration) or iters % 500 == 0:
+                print(f'It: {iters}. Rec. loss: {current_loss.item():2.4f}.')
+
         train_iters.append(iters)
         # losses.append(current_loss)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        if iters % 100 == 0:
+        if iters % 10 == 0:
             args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
             args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
@@ -153,9 +195,11 @@ def idlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
                 break
 
         # save the training image
-        if iters % int(Iteration / args.log_interval) == 0:
+        if iters % int(Iteration / args.log_interval) == 0 or (args.log_interval == 1 and iters == Iteration-1):
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
                      str_time, mean_std)
+
+        # save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
 
     # label = torch.argmax(dummy_label, dim=-1).detach().item()
     args.logger.info("inversion finished")
@@ -200,7 +244,7 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
         def closure():
             optimizer.zero_grad()
             pred = net(dummy_data)
-            dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
+            dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)+1e-10), dim=-1))
             dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
             grad_diff = 0
             for gx, gy in zip(dummy_dy_dx, original_dy_dx):
@@ -225,9 +269,11 @@ def dlgadam(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
                 break
 
         # save the training image
-        if iters % int(Iteration / args.log_interval) == 0:
+        if iters % int(Iteration / args.log_interval) == 0 or (args.log_interval == 1 and iters == Iteration-1):
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
                      str_time, mean_std)
+
+        # save_final_img(iters, final_iter, final_img, tp, dummy_data, imidx, num_dummy, save_path, args, imidx_list)
 
     args.logger.info("inversion finished")
 
@@ -266,8 +312,8 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     dummy_data = torch.randn(gt_data.size()).to(device).requires_grad_(True)
     dummy_label = torch.randn((gt_data.shape[0], num_classes)).to(device).requires_grad_(True)
 
-    with torch.no_grad():
-        dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+    # with torch.no_grad():
+    #     dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
 
     optimizer = torch.optim.Adam([dummy_data, dummy_label], lr= args.lr)
     history = []
@@ -281,7 +327,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
         def closure():
             optimizer.zero_grad()
             pred = net(dummy_data)
-            dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)), dim=-1))
+            dummy_loss = - torch.mean(torch.sum(torch.softmax(dummy_label, -1) * torch.log(torch.softmax(pred, -1)+1e-8), dim=-1))
             dummy_dy_dx = torch.autograd.grad(dummy_loss, net.parameters(), create_graph=True)
             grad_diff = 0
             for gx, gy in zip(dummy_dy_dx, original_dy_dx):
@@ -294,7 +340,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
 
         with torch.no_grad():
             # Project into image space
-            dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
+            # dummy_data.data = torch.max(torch.min(dummy_data, (1 - dm) / ds), -dm / ds)
             # dummy_data.data = torch.max(torch.min(dummy_data, dm + ds), dm - ds)
 
             if (iters + 1 == args.iteration) or iters % 500 == 0:
@@ -315,7 +361,7 @@ def invg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
                 break
 
         # save the training image
-        if iters % int(Iteration / args.log_interval) == 0:
+        if iters % int(Iteration / args.log_interval) == 0 or (args.log_interval == 1 and iters == Iteration-1):
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
                      str_time, mean_std)
 
@@ -397,18 +443,25 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
     if args.num_dummy > 1:
         if args.optim == 'LBFGS':
             optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr = args.lr)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                             milestones=[args.iteration // 12.0], gamma=0.0001)
         else:
             optimizer = optimizer = torch.optim.Adam([dummy_data, dummy_label], lr=args.lr)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                             milestones=[args.iteration // 1.5], gamma=0.1)
     else:
         if args.optim == 'LBFGS':
             optimizer = torch.optim.LBFGS([dummy_data, ], lr = args.lr)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                             milestones=[args.iteration // 12.0],
+                                                             gamma=0.0001)
         else:
             optimizer = torch.optim.Adam([dummy_data, ], lr=args.lr)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                             milestones=[args.iteration // 1.5], gamma=0.1)
 
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
     #         milestones=[args.iteration // 2.667, args.iteration // 1.6, args.iteration // 1.142], gamma=0.1)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                     milestones=[args.iteration // 2.0], gamma=0.1)
 
     history = []
     history_iters = []
@@ -453,7 +506,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
 
         train_iters.append(iters)
         result = save_eval(args.get_eval_metrics(), dummy_data, gt_data)
-        if iters % 100 == 0:
+        if iters % 10 == 0:
             args.logger.info('iters idx: #{}, current lr: #{}', iters, optimizer.param_groups[0]['lr'])
             args.logger.info('loss: #{}, mse: #{}, lpips: #{}, psnr: #{}, ssim: #{}', current_loss, result[0], result[1], result[2], result[3])
         results.append(result)
@@ -465,7 +518,7 @@ def mdlg(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, num_
                 break
 
         # save the training image
-        if iters % int(Iteration / args.log_interval) == 0:
+        if iters % int(Iteration / args.log_interval) == 0 or (args.log_interval == 1 and iters == Iteration-1):
             save_img(iters, args, history, tp, dummy_data, num_dummy, history_iters, gt_data, save_path, imidx_list,
                      str_time, mean_std)
 
@@ -576,16 +629,15 @@ def mdlg_mt(args, device, num_dummy, idx_shuffle, tt, tp, dst, mean_std, nets, n
                     _loss += ((gx - gy) ** 2).sum()
                 losses.append(_loss)
 
-
-
-            # add class num into weights
-            class_list = [5749, 2]
-            # game_alpha = np.multiply(game_alpha, class_list)
+            # class_list = [5749, 2]
 
             if args.diff_task_agg == 'game':
                 game = NashMSFL(n_tasks=args.num_servers)
                 _, _, game_alpha = game.get_weighted_loss(losses=losses, dummy_data=dummy_data)
                 game_alpha = [game_alpha[i] / sum(game_alpha) for i in range(len(game_alpha))]
+                # add class num into weights
+                # class_list = [2, 10]
+                # game_alpha = np.multiply(game_alpha, class_list)
                 grad_diff = sum([losses[i] * game_alpha[i] for i in range(len(game_alpha))])
             elif args.diff_task_agg == 'single':
                 grad_diff = sum([losses[i] * single_alpha[i] for i in range(len(single_alpha))])
